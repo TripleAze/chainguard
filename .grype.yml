@@ -1,0 +1,21 @@
+# .grype.yaml
+# ChainGuard CVE scan policy configuration
+
+fail-on-severity: critical
+
+ignore:
+  # Ignore CVEs where no fix is available yet
+  # Teams must document why each ignore exists
+  - vulnerability: CVE-2023-XXXXX
+    reason: "No fix available upstream, mitigated by network policy"
+    expires: "2026-07-01"   # Force re-evaluation after this date
+
+output:
+  - table
+  - sarif=results.sarif
+
+# Check against multiple databases
+external-sources:
+  enable: true
+  nodejs:
+    search-upstream-anchors: true
