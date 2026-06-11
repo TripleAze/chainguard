@@ -10,9 +10,6 @@ ignore:
     reason: "No fix available upstream, mitigated by network policy"
     expires: "2026-07-01"   # Force re-evaluation after this date
 
-output:
-  - table
-  - sarif=results.sarif
 
 # Check against multiple databases
 external-sources:

@@ -126,6 +126,7 @@ jobs:
           name: sbom
 
       - name: Scan SBOM with Grype
+        id: scan
         uses: anchore/scan-action@v3
         with:
           sbom: sbom.spdx.json
@@ -133,12 +134,13 @@ jobs:
           # Teams can override this in their .grype.yaml
           fail-build: true
           severity-cutoff: critical
+          output-format: sarif
 
       - name: Upload scan results (SARIF)
         if: always()   # upload even if scan failed — for visibility
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: results.sarif
+          sarif_file: ${{ steps.scan.outputs.sarif }}
 
   # ─────────────────────────────────────────────
   # JOB 4: Sign Image & Attach SBOM Attestation
