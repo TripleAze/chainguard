@@ -58,7 +58,8 @@ jobs:
         id: push
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: razz-bug-calenderapp
+          file: razz-bug-calenderapp/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
