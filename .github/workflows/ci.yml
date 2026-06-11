@@ -115,7 +115,6 @@ jobs:
   scan-sbom:
     needs: generate-sbom
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,48 +129,46 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
             | sh -s -- -b /usr/local/bin v0.80.0
 
-      # Step 1: Generate SARIF report — never fails the build
-      # This guarantees the file exists for upload regardless of CVE findings
+      - name: Update Grype DB
+        run: |
+          grype db update
+          grype db status
+
       - name: Generate SARIF report
         run: |
           grype sbom:sbom.spdx.json \
             --output sarif \
             --file results.sarif
-        continue-on-error: true
+        continue-on-error: true  # don't fail here — upload first
 
-      # Step 2: Verify the file is valid before uploading
       - name: Verify SARIF
         if: always()
         run: |
           if [ ! -s results.sarif ]; then
-            echo "⚠️  SARIF empty — writing minimal valid fallback"
+            echo "⚠️ SARIF empty — writing minimal valid fallback"
             cat > results.sarif << 'EOF'
           {
             "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
             "version": "2.1.0",
             "runs": [{
-              "tool": {
-                "driver": { "name": "Grype", "rules": [] }
-              },
+              "tool": { "driver": { "name": "Grype", "rules": [] } },
               "results": []
             }]
           }
           EOF
           else
-            echo "✅ SARIF file present ($(wc -c < results.sarif) bytes)"
+            echo "✅ SARIF present ($(wc -c < results.sarif) bytes)"
             python3 -m json.tool results.sarif > /dev/null && echo "✅ Valid JSON"
           fi
 
-      # Step 3: Upload to GitHub Security tab
-      - name: Upload SARIF
+      - name: Upload SARIF to GitHub Security tab
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
           category: chainguard-grype
 
-      # Step 4: Enforce the gate — this is what actually fails the job
-      # Runs AFTER upload so Security tab is always populated
+      # Gate runs last — after evidence is uploaded
       - name: Enforce CVE gate
         run: |
           grype sbom:sbom.spdx.json \
