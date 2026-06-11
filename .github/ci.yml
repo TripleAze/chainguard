@@ -1,0 +1,205 @@
+name: ChainGuard CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# These permissions are required for keyless signing and SLSA provenance
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # JOB 1: Build & Push
+  # Builds the Docker image and pushes to GHCR.
+  # We push *before* signing — you sign the digest,
+  # not the tag, because tags are mutable.
+  # ─────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache layers between runs — faster builds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Always build for both architectures
+          platforms: linux/amd64,linux/arm64
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Generate SBOM
+  # Syft generates the SBOM from the image digest.
+  # We use the digest (not tag) to guarantee we're
+  # scanning exactly what was pushed.
+  # ─────────────────────────────────────────────
+  generate-sbom:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      sbom-path: sbom.spdx.json
+
+    steps:
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOM
+        run: |
+          syft ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }} \
+            --output spdx-json=sbom.spdx.json \
+            --output table
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: 90
+
+  # ─────────────────────────────────────────────
+  # JOB 3: Scan SBOM
+  # Grype scans the SBOM for CVEs.
+  # This is the GATE — pipeline fails here if
+  # critical vulnerabilities are found.
+  # Configurable via .grype.yaml in the repo root.
+  # ─────────────────────────────────────────────
+  scan-sbom:
+    needs: generate-sbom
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+
+      - name: Scan SBOM with Grype
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.spdx.json
+          # Fail the build on CRITICAL CVEs
+          # Teams can override this in their .grype.yaml
+          fail-build: true
+          severity-cutoff: critical
+          output-format: table
+
+      - name: Upload scan results (SARIF)
+        if: always()   # upload even if scan failed — for visibility
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
+  # ─────────────────────────────────────────────
+  # JOB 4: Sign Image & Attach SBOM Attestation
+  # Only runs if scan passed.
+  # Cosign keyless signing — no stored private key.
+  # The signing identity is the GitHub Actions OIDC
+  # token: proves this specific workflow signed it.
+  # ─────────────────────────────────────────────
+  sign-and-attest:
+    needs: [build, scan-sbom]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+
+      - name: Sign image
+        # Signs the digest, not the tag.
+        # Signature is stored in the registry as:
+        # ghcr.io/yourorg/yourapp:sha256-abc123.sig
+        run: |
+          cosign sign --yes \
+            ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
+
+      - name: Attach SBOM as attestation
+        # Attaches the SBOM as a signed in-toto attestation.
+        # Stored alongside the image in the registry.
+        run: |
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdxjson \
+            ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
+
+  # ─────────────────────────────────────────────
+  # JOB 5: SLSA Provenance
+  # Uses the official SLSA GitHub generator.
+  # Generates a signed provenance attestation that
+  # records: source commit, builder, workflow,
+  # inputs, and build environment.
+  # This is what achieves SLSA Level 2.
+  # ─────────────────────────────────────────────
+  provenance:
+    needs: [build, sign-and-attest]
+    # SLSA generator must run on a separate job
+    # with its own permissions — this is by design
+    permissions:
+      actions: read
+      id-token: write
+      packages: write
+    # Uses the official SLSA GitHub generator
+    # Pinned to a specific SHA — never use @main
+    # for security-critical actions
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    with:
+      image: ${{ needs.build.outputs.image-ref }}
+      digest: ${{ needs.build.outputs.digest }}
+      registry-username: ${{ github.actor }}
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}

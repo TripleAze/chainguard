@@ -1,0 +1,18 @@
+*,
+*::after,
+*::before {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #f5f5f5;
+  padding: 30px;
+}
+
+.app-title{
+  text-align: center;
+  font-family: monospace;
+  padding: 14px;
+}
