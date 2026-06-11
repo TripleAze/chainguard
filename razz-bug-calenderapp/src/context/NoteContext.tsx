@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import DOMPurify from "dompurify";
 
 interface NoteContextType {
   notes: Record<string, string>;
@@ -21,9 +22,10 @@ export const NoteProvider: React.FC<{ children: ReactNode }> = ({
   }, [notes]);
 
   const setNote = (dateKey: string, note: string) => {
+    const sanitizedNote = DOMPurify.sanitize(note);
     setNotes((prev) => ({
       ...prev,
-      [dateKey]: note,
+      [dateKey]: sanitizedNote,
     }));
   };
 
