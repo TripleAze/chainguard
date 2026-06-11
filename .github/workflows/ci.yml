@@ -16,6 +16,7 @@ permissions:
   packages: write
   id-token: write
   attestations: write
+  security-events: write
 
 jobs:
   # ─────────────────────────────────────────────
@@ -132,11 +133,10 @@ jobs:
           # Teams can override this in their .grype.yaml
           fail-build: true
           severity-cutoff: critical
-          output-format: table
 
       - name: Upload scan results (SARIF)
         if: always()   # upload even if scan failed — for visibility
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
 
