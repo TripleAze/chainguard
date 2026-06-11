@@ -74,7 +74,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Always build for both architectures
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64 #,linux/arm64
 
   # ─────────────────────────────────────────────
   # JOB 2: Generate SBOM
