@@ -125,22 +125,26 @@ jobs:
         with:
           name: sbom
 
-      - name: Scan SBOM with Grype
+      - name: Generate SARIF Report
         id: scan
         uses: anchore/scan-action@v3
         with:
           sbom: sbom.spdx.json
-          # Fail the build on CRITICAL CVEs
-          # Teams can override this in their .grype.yaml
-          fail-build: true
-          severity-cutoff: critical
+          fail-build: false
           output-format: sarif
 
       - name: Upload scan results (SARIF)
-        if: always()   # upload even if scan failed — for visibility
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
+
+      - name: Enforce Security Gate
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom.spdx.json
+          fail-build: true
+          severity-cutoff: critical
+          output-format: table
 
   # ─────────────────────────────────────────────
   # JOB 4: Sign Image & Attach SBOM Attestation
