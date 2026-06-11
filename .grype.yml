@@ -4,12 +4,24 @@
 fail-on-severity: critical
 
 ignore:
-  # Ignore CVEs where no fix is available yet
-  # Teams must document why each ignore exists
-  - vulnerability: CVE-2023-XXXXX
-    reason: "No fix available upstream, mitigated by network policy"
-    expires: "2026-07-01"   # Force re-evaluation after this date
+  - vulnerability: CVE-2026-42945
+    match-type: exact-indirect-match
+    reason: >
+      nginx CVE with no upstream fix available as of 2026-06-11.
+      Attack vector requires ability to send crafted HTTP/2 requests
+      to the nginx process. Mitigated by: network policy restricts
+      ingress to known load balancer IPs only.
+    expires: "2026-09-11"   # re-evaluate in 90 days
 
+  - vulnerability: CVE-2025-48174
+    match-type: exact-indirect-match
+    reason: >
+      libavif CVE with no upstream fix available as of 2026-06-11.
+      libavif is not directly invoked by application code — pulled in
+      as a transitive dependency of image processing libraries.
+      Attack vector requires processing of malicious AVIF files,
+      which this service does not accept from untrusted input.
+    expires: "2026-09-11"
 
 # Check against multiple databases
 external-sources:

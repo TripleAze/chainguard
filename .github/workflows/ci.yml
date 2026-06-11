@@ -137,6 +137,7 @@ jobs:
       - name: Generate SARIF report
         run: |
           grype sbom:sbom.spdx.json \
+            --config .grype.yml \
             --output sarif \
             --file results.sarif
         continue-on-error: true  # don't fail here — upload first
@@ -172,6 +173,7 @@ jobs:
       - name: Enforce CVE gate
         run: |
           grype sbom:sbom.spdx.json \
+            --config .grype.yml \
             --output table \
             --fail-on critical
 
