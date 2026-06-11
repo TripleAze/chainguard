@@ -125,26 +125,49 @@ jobs:
         with:
           name: sbom
 
-      - name: Generate SARIF Report
+      - name: Scan SBOM with Grype
         id: scan
-        uses: anchore/scan-action@v4
-        with:
-          sbom: sbom.spdx.json
-          fail-build: false
-          output-format: sarif
-
-      - name: Upload scan results (SARIF)
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
-
-      - name: Enforce Security Gate
         uses: anchore/scan-action@v4
         with:
           sbom: sbom.spdx.json
           fail-build: true
           severity-cutoff: critical
-          output-format: table
+          output-format: sarif
+
+      - name: Ensure valid SARIF exists
+        if: always()
+        run: |
+          SARIF_FILE="${{ steps.scan.outputs.sarif }}"
+          
+          # If file doesn't exist or is empty, write a minimal valid SARIF
+          if [ ! -s "$SARIF_FILE" ]; then
+            echo "⚠️  SARIF file missing or empty, writing minimal valid SARIF"
+            cat > "$SARIF_FILE" << 'EOF'
+          {
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Grype",
+                    "version": "unknown",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          EOF
+          fi
+
+      - name: Upload scan results (SARIF)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}
+          category: chainguard-grype
 
   # ─────────────────────────────────────────────
   # JOB 4: Sign Image & Attach SBOM Attestation
