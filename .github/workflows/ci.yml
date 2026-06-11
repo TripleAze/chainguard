@@ -28,9 +28,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.push.outputs.digest }}
-      image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      image-ref: ${{ steps.prep.outputs.lowercase_repo }}
 
     steps:
+      - name: Prepare lowercase image ref
+        id: prep
+        run: |
+          IMAGE_REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "lowercase_repo=${IMAGE_REF,,}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -48,7 +54,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.prep.outputs.lowercase_repo }}
           tags: |
             type=sha,prefix=sha-
             type=ref,event=branch
