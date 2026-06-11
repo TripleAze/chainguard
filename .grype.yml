@@ -5,7 +5,6 @@ fail-on-severity: critical
 
 ignore:
   - vulnerability: CVE-2026-42945
-    match-type: exact-indirect-match
     reason: >
       nginx CVE with no upstream fix available as of 2026-06-11.
       Attack vector requires ability to send crafted HTTP/2 requests
@@ -14,7 +13,6 @@ ignore:
     expires: "2026-09-11"   # re-evaluate in 90 days
 
   - vulnerability: CVE-2025-48174
-    match-type: exact-indirect-match
     reason: >
       libavif CVE with no upstream fix available as of 2026-06-11.
       libavif is not directly invoked by application code — pulled in
