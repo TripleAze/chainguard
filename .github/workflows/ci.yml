@@ -221,6 +221,13 @@ jobs:
             --type spdxjson \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
+      - name: Generate GitHub-native attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/tripleaze/chainguard
+          subject-digest: ${{ needs.build.outputs.digest }}
+          push-to-registry: true
+
   # ─────────────────────────────────────────────
   # JOB 5: SLSA Provenance
   # Uses the official SLSA GitHub generator.
