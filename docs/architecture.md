@@ -1,4 +1,4 @@
-# ChainGuard — Architecture & Design Decisions
+# ChainGuard Architecture & Design Decisions
 
 ## Problem Statement
 
@@ -17,14 +17,14 @@ Keyless signing instead uses identity, not secrets:
 - The GitHub Actions runner requests a short-lived OIDC token from GitHub. This token cryptographically asserts "I am workflow `ci.yml`, in repo `TripleAze/chainguard`, on ref `refs/heads/main`, triggered by event `push`."
 - Cosign presents that token to Sigstore's Fulcio certificate authority, which issues a short-lived (10-minute) signing certificate bound to that identity.
 - Cosign signs the image digest with the corresponding ephemeral private key, which is discarded immediately after.
-- The certificate and signature are recorded in Rekor, a public, append-only transparency log — anyone can audit when something was signed, even if they don't trust the signer.
-- To verify, a verifier checks: "was this signed by a certificate issued to `TripleAze/chainguard`'s `ci.yml` workflow, by Fulcio, and logged in Rekor?" — no shared secret required on either side.
+- The certificate and signature are recorded in Rekor, a public, append-only transparency log, anyone can audit when something was signed, even if they don't trust the signer.
+- To verify, a verifier checks: "was this signed by a certificate issued to `TripleAze/chainguard`'s `ci.yml` workflow, by Fulcio, and logged in Rekor?", no shared secret required on either side.
 
 Trade-off acknowledged: this ties signing identity to GitHub's OIDC issuer. If you move CI providers, verification policy needs to be updated (`--certificate-oidc-issuer`). For a single-provider setup this is an acceptable and arguably more secure trade-off than key management.
 
 ## Why Sign and Attest the Digest, Not the Tag
 
-Tags (`main`, `latest`, `v1.2.3`) are mutable — a tag can be repointed to a different image at any time. The digest (`sha256:...`) is a content hash; it can never change without becoming a different digest.
+Tags (`main`, `latest`, `v1.2.3`) are mutable, meaning a tag can be repointed to a different image at any time. The digest (`sha256:...`) is a content hash, it can never change without becoming a different digest.
 
 Every signing and attestation operation in the pipeline operates on `${{ needs.build.outputs.digest }}`, the exact digest produced by the build job's push. This guarantees:
 
@@ -32,11 +32,11 @@ Every signing and attestation operation in the pipeline operates on `${{ needs.b
 - The signature covers this exact image
 - The provenance describes this exact image's build
 
-A verifier checking `image:main` first resolves it to a digest, then verifies signatures/attestations against that digest — closing the gap that tag mutability would otherwise leave open.
+A verifier checking `image:main` first resolves it to a digest, then verifies signatures/attestations against that digest, closing the gap that tag mutability would otherwise leave open.
 
 ## Why SBOM Generation Happens Post-Build, From the Pushed Image
 
-Syft runs against `image-ref@digest` — the pushed image — rather than against the build context or Dockerfile. This means the SBOM reflects what's actually in the shipped artifact, including base image layers, transitive OS packages, and anything introduced by the build process itself — not just what's declared in `package.json` or the `Dockerfile`.
+Syft runs against `image-ref@digest` the pushed image rather than against the build context or Dockerfile. This means the SBOM reflects what's actually in the shipped artifact, including base image layers, transitive OS packages, and anything introduced by the build process itself — not just what's declared in `package.json` or the `Dockerfile`.
 
 ## The CVE Gate: Design Reasoning
 

@@ -1,6 +1,6 @@
 # ChainGuard
 
-A supply chain security enforcement pipeline for container-based workflows — implementing SBOM generation, vulnerability scanning, keyless image signing, and SLSA provenance attestation, all enforced as CI gates with zero stored secrets.
+ChainGuard is a supply chain security enforcement pipeline for container-based workflows, implementing SBOM generation, vulnerability scanning, keyless image signing, and SLSA provenance attestation, all enforced as CI gates with zero stored secrets.
 
 ## What This Is
 
@@ -26,7 +26,7 @@ push to main
    to GHCR       digest              criticals        a signed attestation  attached to image
 ```
 
-Every step operates on the **image digest**, never a mutable tag — so what gets scanned, signed, and attested is guaranteed to be exactly what was pushed.
+Every step operates on the **image digest**, never a mutable tag, so what gets scanned, signed, and attested is guaranteed to be exactly what was pushed.
 
 ## What Gets Produced
 
@@ -69,7 +69,7 @@ The pipeline gate fails the build on any **critical** CVE that has an available 
 
 ## Multi-Stage Build Hardening
 
-The Dockerfile is multi-stage (`build` → `production`). OS package upgrades (`apk upgrade --no-cache`) are applied in **every stage that contributes to the final image** — patching only the build stage has no effect on the shipped image, since only the final `FROM` stage's layers are retained.
+The Dockerfile is multi-stage (`build` → `production`). OS package upgrades (`apk upgrade --no-cache`) are applied in **every stage that contributes to the final image**, as patching only the build stage has no effect on the shipped image, since only the final `FROM` stage's layers are retained.
 
 ## Architecture & Design Decisions
 
