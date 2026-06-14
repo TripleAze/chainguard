@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "razz-bug-calenderapp/**"   # fixed: was missing /**
+      - "razz-bug-calenderapp/**"
       - ".github/workflows/ci.yml"
-      - ".grype.yaml"               # fixed: was .grype.yml
+      - ".grype.yaml"
   pull_request:
     branches: [main]
     paths:
