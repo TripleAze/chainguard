@@ -19,7 +19,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 permissions:
-  contents: write      # upgraded from read — needed to commit digest update for ArgoCD
+  contents: write
   packages: write
   id-token: write
   attestations: write
@@ -37,7 +37,6 @@ jobs:
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       image-ref: ${{ steps.prep.outputs.lowercase_repo }}
-
     steps:
       - name: Prepare lowercase image ref
         id: prep
@@ -90,7 +89,6 @@ jobs:
   generate-sbom:
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@v0
@@ -113,13 +111,12 @@ jobs:
   # Grype scans the SBOM for CVEs.
   # Gate: fails on unfixed critical CVEs.
   # Documented exceptions live in .grype.yaml.
-  # SARIF is uploaded before the gate runs so
-  # the Security tab is always populated.
+  # SARIF uploaded before gate so Security tab
+  # is always populated regardless of outcome.
   # ─────────────────────────────────────────────
   scan-sbom:
     needs: generate-sbom
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -145,7 +142,7 @@ jobs:
             --config .grype.yaml \
             --output sarif \
             --file results.sarif
-        continue-on-error: true  # upload evidence before enforcing gate
+        continue-on-error: true
 
       - name: Verify SARIF is valid
         if: always()
@@ -175,7 +172,6 @@ jobs:
           category: chainguard-grype
 
       - name: Enforce CVE gate
-        # Runs after SARIF upload — gate blocks pipeline but evidence is already stored
         run: |
           grype sbom:sbom.spdx.json \
             --config .grype.yaml \
@@ -186,20 +182,30 @@ jobs:
   # JOB 4: Sign, Attest & Push Provenance
   # Only runs if scan passed the CVE gate.
   # Cosign keyless signing via OIDC — no stored keys.
-  # Provenance pushed to OCI registry via
-  # actions/attest-build-provenance so Kyverno
-  # can verify it at admission time.
+  # Attaches three attestations to the image:
+  #   1. SBOM (spdxjson)
+  #   2. Vuln scan (vuln) — built from Grype JSON
+  #   3. Provenance (via actions/attest-build-provenance)
   # ─────────────────────────────────────────────
   sign-and-attest:
     needs: [build, scan-sbom]
     runs-on: ubuntu-latest
-
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
       - name: Install Grype
-        uses: anchore/scan-action/download-grype@v3
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Update Grype vulnerability database
+        run: |
+          grype db update
+          grype db status
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -214,41 +220,90 @@ jobs:
           name: sbom
 
       - name: Sign image digest
-        # Signs the digest, not the mutable tag.
-        # Stored in registry as: sha256-<digest>.sig
         run: |
           cosign sign --yes \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
       - name: Attach SBOM as signed attestation
-        # Attaches SBOM as a signed in-toto DSSE attestation.
-        # Stored in registry as: sha256-<digest>.att
-        # Kyverno policy 02-require-sbom-attestation verifies this.
         run: |
           cosign attest --yes \
             --predicate sbom.spdx.json \
             --type spdxjson \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
-      
+
       - name: Generate and attach signed vuln attestation
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
-          # Run Grype with cosign-vuln output format, this produces
-          # a JSON payload matching the vuln attestation predicate schema
+          # Collect grype + DB metadata for the predicate
+          GRYPE_VERSION=$(grype version -o json | jq -r '.version')
+          DB_UPDATE=$(grype db status -o json | jq -r '.built // "unknown"')
+          DB_VERSION=$(grype db status -o json | jq -r '.schemaVersion // "unknown"')
+          SCAN_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          echo "Grype version: $GRYPE_VERSION"
+          echo "DB built: $DB_UPDATE"
+
+          # Run Grype with JSON output
           grype sbom:sbom.spdx.json \
             --config .grype.yaml \
             --output json \
-            --file vuln-attestation.json
+            --file grype-results.json
 
-          echo "Vuln attestation payload:"
-          cat vuln-attestation.json | jq '.predicate.scanner'
+          # Transform into cosign vuln predicate schema
+          jq \
+            --arg uri "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg event_id "${{ github.run_id }}" \
+            --arg builder "${{ github.workflow }}" \
+            --arg grype_version "$GRYPE_VERSION" \
+            --arg db_update "$DB_UPDATE" \
+            --arg db_version "$DB_VERSION" \
+            --arg scan_time "$SCAN_TIME" \
+            '{
+              invocation: {
+                uri: $uri,
+                event_id: $event_id,
+                "builder.id": $builder
+              },
+              scanner: {
+                uri: "https://github.com/anchore/grype",
+                version: $grype_version,
+                db: {
+                  lastUpdate: $db_update,
+                  version: $db_version
+                },
+                result: [
+                  .matches[] | {
+                    vulnerability: {
+                      id: .vulnerability.id,
+                      severity: .vulnerability.severity,
+                      references: (.vulnerability.urls // []),
+                      dataSource: (.vulnerability.dataSource // "")
+                    },
+                    artifact: {
+                      name: .artifact.name,
+                      version: .artifact.version,
+                      type: .artifact.type,
+                      location: ((.artifact.locations // [{}])[0].path // "")
+                    }
+                  }
+                ]
+              },
+              metadata: {
+                scanStartedOn: $scan_time,
+                scanFinishedOn: $scan_time
+              }
+            }' grype-results.json > vuln-predicate.json
 
-          # Sign and attach as a cosign vuln attestation
+          echo "Scanner info:"
+          cat vuln-predicate.json | jq '.scanner | {uri, version, db}'
+          echo "Total findings in attestation:"
+          cat vuln-predicate.json | jq '.scanner.result | length'
+
           cosign attest --yes \
-            --predicate vuln-attestation.json \
+            --predicate vuln-predicate.json \
             --type vuln \
-          ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
+            ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
       - name: Push provenance attestation to OCI registry
         uses: actions/attest-build-provenance@v1
@@ -258,7 +313,7 @@ jobs:
           push-to-registry: true
 
   # ─────────────────────────────────────────────
-  # JOB 5: SLSA Provenance (external generator)
+  # JOB 5: SLSA Provenance
   # Generates SLSA Level 2 provenance via the
   # official SLSA GitHub generator — runs in an
   # isolated job so the build job cannot tamper
@@ -289,7 +344,6 @@ jobs:
     needs: [build, sign-and-attest, provenance]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -297,10 +351,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update image digest in deployment manifest
-        # Pins the deployment to an exact digest — not a mutable tag.
-        # ArgoCD watches this file and syncs when it changes.
-        # Using digest (not tag) means ArgoCD deploys exactly what
-        # was signed and attested, not whatever :main resolves to.
         run: |
           DIGEST="${{ needs.build.outputs.digest }}"
           IMAGE_REF="${{ needs.build.outputs.image-ref }}"
@@ -308,7 +358,6 @@ jobs:
           sed -i "s|image: ${IMAGE_REF}@sha256:.*|image: ${IMAGE_REF}@${DIGEST}|g" \
             deploy/deployment.yml
 
-          # Verify the substitution worked
           echo "Updated image reference:"
           grep "image:" deploy/deployment.yml
 
