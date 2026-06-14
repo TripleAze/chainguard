@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chainguard-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: chainguard
+spec:
+  project: default
+
+  source:
+    # ArgoCD watches this repo for changes to deploy/
+    repoURL: https://github.com/TripleAze/chainguard
+    targetRevision: main
+    path: deploy
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chainguard-app
+
+  syncPolicy:
+    automated:
+      prune: true       # remove resources deleted from Git
+      selfHeal: true    # revert manual cluster changes back to Git state
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m

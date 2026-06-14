@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-signature
+  annotations:
+    policies.kyverno.io/title: Require Cosign Signature
+    policies.kyverno.io/description: >-
+      Verifies that container images are signed using Cosign keyless
+      signing, with a certificate issued to the ChainGuard CI workflow
+      via GitHub's OIDC issuer. Images that fail verification are
+      reported (audit mode) or blocked (enforce mode).
+spec:
+# AUDIT first: violations are logged in PolicyReports, pods still admitted
+  validationFailureAction: Audit
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-chainguard-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/tripleaze/chainguard*"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor: 
+                      url: "https://rekor.sigstore.dev"

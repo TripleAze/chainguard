@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-critical-cves
+  annotations:
+    policies.kyverno.io/title: Block Critical CVEs
+    policies.kyverno.io/description: >-
+      Verifies that container images have a vulnerability scan attestation and blocks
+      deployment if there are any critical severity vulnerabilities found.
+spec:
+  validationFailureAction: Audit # Default, overridden by kustomization.yaml to Enforce
+  background: false
+  rules:
+    - name: verify-vuln-scan
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/tripleaze/chainguard*"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestations:
+            - predicateType: https://cosign.sigstore.dev/attestation/vuln/v1
+              attestors:
+                - entries:
+                    - keyless:
+                        subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: "https://rekor.sigstore.dev"
+              conditions:
+                - all:
+                    - key: "{{ scanner.result.Results[].Vulnerabilities[].Severity | contains(@, 'CRITICAL') }}"
+                      operator: Equals
+                      value: false

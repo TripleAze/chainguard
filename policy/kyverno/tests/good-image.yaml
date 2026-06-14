@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod
+  namespace: default
+spec:
+  containers:
+    - name: chainguard-app
+      image: ghcr.io/tripleaze/chainguard@sha256:e87affc27f0ba01e6d4193bec53b22efd303fb8de4c6c8d9904d81359c530d53

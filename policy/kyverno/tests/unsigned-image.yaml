@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-pod
+  namespace: default
+spec:
+  containers:
+    - name: unsigned-app
+      image: ghcr.io/tripleaze/chainguard:latest

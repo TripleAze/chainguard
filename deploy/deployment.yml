@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chainguard-app
+  labels:
+    app.kubernetes.io/managed-by: argocd
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: razz-bug-calenderapp
+  namespace: chainguard-app
+  labels:
+    app: razz-bug-calenderapp
+    app.kubernetes.io/managed-by: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: razz-bug-calenderapp
+  template:
+    metadata:
+      labels:
+        app: razz-bug-calenderapp
+    spec:
+      containers:
+        - name: razz-bug-calenderapp
+          # CI job 6 (update-manifest) pins this to an exact digest after every build.
+          # ArgoCD syncs when this value changes.
+          # The digest matches exactly what was signed, scanned, and attested in CI.
+          image: ghcr.io/tripleaze/chainguard@sha256:PLACEHOLDER
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+# deploy/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: razz-bug-calenderapp
+  namespace: chainguard-app
+spec:
+  selector:
+    app: razz-bug-calenderapp
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP

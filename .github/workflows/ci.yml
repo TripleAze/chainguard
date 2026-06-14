@@ -4,25 +4,22 @@ on:
   push:
     branches: [main]
     paths:
-      - "razz-bug-calenderapp"
+      - "razz-bug-calenderapp/**"   # fixed: was missing /**
       - ".github/workflows/ci.yml"
-      - ".grype.yml"
-      - "Dockerfile"
+      - ".grype.yaml"               # fixed: was .grype.yml
   pull_request:
     branches: [main]
     paths:
-      - "razz-bug-calenderapp"
+      - "razz-bug-calenderapp/**"
       - ".github/workflows/ci.yml"
-      - ".grype.yml"
-      - "Dockerfile"
+      - ".grype.yaml"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-# These permissions are required for keyless signing and SLSA provenance
 permissions:
-  contents: read
+  contents: write      # upgraded from read — needed to commit digest update for ArgoCD
   packages: write
   id-token: write
   attestations: write
@@ -80,23 +77,19 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Cache layers between runs — faster builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Build for both architectures
-          platforms: linux/amd64 #,linux/arm64
+          platforms: linux/amd64
 
   # ─────────────────────────────────────────────
   # JOB 2: Generate SBOM
   # Syft generates the SBOM from the image digest.
-  # We use the digest (not tag) to guarantee we're
-  # scanning exactly what was pushed.
+  # Digest-pinned — guarantees we scan exactly what
+  # was pushed, not a same-tag-different-image.
   # ─────────────────────────────────────────────
   generate-sbom:
     needs: build
     runs-on: ubuntu-latest
-    outputs:
-      sbom-path: sbom.spdx.json
 
     steps:
       - name: Install Syft
@@ -118,13 +111,15 @@ jobs:
   # ─────────────────────────────────────────────
   # JOB 3: Scan SBOM
   # Grype scans the SBOM for CVEs.
-  # This is the GATE — pipeline fails here if
-  # critical vulnerabilities are found.
-  # Configurable via .grype.yaml in the repo root.
+  # Gate: fails on unfixed critical CVEs.
+  # Documented exceptions live in .grype.yaml.
+  # SARIF is uploaded before the gate runs so
+  # the Security tab is always populated.
   # ─────────────────────────────────────────────
   scan-sbom:
     needs: generate-sbom
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -139,7 +134,7 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
             | sh -s -- -b /usr/local/bin
 
-      - name: Update Grype DB
+      - name: Update Grype vulnerability database
         run: |
           grype db update
           grype db status
@@ -147,16 +142,16 @@ jobs:
       - name: Generate SARIF report
         run: |
           grype sbom:sbom.spdx.json \
-            --config .grype.yml \
+            --config .grype.yaml \
             --output sarif \
             --file results.sarif
-        continue-on-error: true  # don't fail here if criticalvulnerabilities are found, upload SARIF first
+        continue-on-error: true  # upload evidence before enforcing gate
 
-      - name: Verify SARIF
+      - name: Verify SARIF is valid
         if: always()
         run: |
           if [ ! -s results.sarif ]; then
-            echo "SARIF empty, writing minimal valid fallback"
+            echo "SARIF empty — writing minimal valid fallback"
             cat > results.sarif << 'EOF'
           {
             "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -179,20 +174,21 @@ jobs:
           sarif_file: results.sarif
           category: chainguard-grype
 
-      # Gate runs last, after evidence is uploaded
       - name: Enforce CVE gate
+        # Runs after SARIF upload — gate blocks pipeline but evidence is already stored
         run: |
           grype sbom:sbom.spdx.json \
-            --config .grype.yml \
+            --config .grype.yaml \
             --output table \
             --fail-on critical
 
   # ─────────────────────────────────────────────
-  # JOB 4: Sign Image & Attach SBOM Attestation
-  # Only runs if scan passed.
-  # Cosign keyless signing, no stored private key.
-  # The signing identity is the GitHub Actions OIDC
-  # token: proves this specific workflow signed it.
+  # JOB 4: Sign, Attest & Push Provenance
+  # Only runs if scan passed the CVE gate.
+  # Cosign keyless signing via OIDC — no stored keys.
+  # Provenance pushed to OCI registry via
+  # actions/attest-build-provenance so Kyverno
+  # can verify it at admission time.
   # ─────────────────────────────────────────────
   sign-and-attest:
     needs: [build, scan-sbom]
@@ -214,49 +210,47 @@ jobs:
         with:
           name: sbom
 
-      - name: Sign image
-        # Signs the digest, not the tag.
-        # Signature is stored in the registry as:
-        # ghcr.io/yourorg/yourapp:sha256-abc123.sig
+      - name: Sign image digest
+        # Signs the digest, not the mutable tag.
+        # Stored in registry as: sha256-<digest>.sig
         run: |
           cosign sign --yes \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
-      - name: Attach SBOM as attestation
-        # Attaches the SBOM as a signed in-toto attestation.
-        # Stored alongside the image in the registry.
+      - name: Attach SBOM as signed attestation
+        # Attaches SBOM as a signed in-toto DSSE attestation.
+        # Stored in registry as: sha256-<digest>.att
+        # Kyverno policy 02-require-sbom-attestation verifies this.
         run: |
           cosign attest --yes \
             --predicate sbom.spdx.json \
             --type spdxjson \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
-      - name: Generate GitHub-native attestation
+      - name: Push provenance attestation to OCI registry
+        # Pushes SLSA provenance to the OCI registry as a Sigstore bundle.
+        # This is what Kyverno policy 01-require-provenance verifies.
+        # Without push-to-registry: true, provenance only lives in
+        # GitHub's Attestations API which Kyverno cannot query.
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ghcr.io/tripleaze/chainguard
+          subject-name: ${{ needs.build.outputs.image-ref }}
           subject-digest: ${{ needs.build.outputs.digest }}
           push-to-registry: true
 
   # ─────────────────────────────────────────────
-  # JOB 5: SLSA Provenance
-  # Uses the official SLSA GitHub generator.
-  # Generates a signed provenance attestation that
-  # records: source commit, builder, workflow,
-  # inputs, and build environment.
-  # This is what achieves SLSA Level 2.
+  # JOB 5: SLSA Provenance (external generator)
+  # Generates SLSA Level 2 provenance via the
+  # official SLSA GitHub generator — runs in an
+  # isolated job so the build job cannot tamper
+  # with the provenance it describes.
   # ─────────────────────────────────────────────
   provenance:
     needs: [build, sign-and-attest]
-    # SLSA generator must run on a separate job
-    # with its own permissions — this is by design
     permissions:
       actions: read
       id-token: write
       packages: write
-    # Uses the official SLSA GitHub generator
-    # Pinned to a specific SHA — never use @main
-    # for security-critical actions
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
     with:
       image: ${{ needs.build.outputs.image-ref }}
@@ -264,3 +258,45 @@ jobs:
       registry-username: ${{ github.actor }}
     secrets:
       registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────
+  # JOB 6: Update Deployment Manifest
+  # Updates the image digest in the Kubernetes
+  # deployment manifest so ArgoCD detects the
+  # change and reconciles the cluster.
+  # Only runs on push to main (not PRs).
+  # ─────────────────────────────────────────────
+  update-manifest:
+    needs: [build, sign-and-attest, provenance]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image digest in deployment manifest
+        # Pins the deployment to an exact digest — not a mutable tag.
+        # ArgoCD watches this file and syncs when it changes.
+        # Using digest (not tag) means ArgoCD deploys exactly what
+        # was signed and attested, not whatever :main resolves to.
+        run: |
+          DIGEST="${{ needs.build.outputs.digest }}"
+          IMAGE_REF="${{ needs.build.outputs.image-ref }}"
+
+          sed -i "s|image: ${IMAGE_REF}@sha256:.*|image: ${IMAGE_REF}@${DIGEST}|g" \
+            deploy/deployment.yaml
+
+          # Verify the substitution worked
+          echo "Updated image reference:"
+          grep "image:" deploy/deployment.yaml
+
+      - name: Commit and push manifest update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/deployment.yaml
+          git diff --staged --quiet || git commit -m "chore: update image to ${{ needs.build.outputs.digest }}"
+          git push

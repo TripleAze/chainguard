@@ -1,0 +1,43 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: chainguard-kyverno-tests
+policies:
+  - ../00-require-signature.yaml
+  - ../01-require-provenance.yaml
+  - ../02-require-sbom-attestation.yaml
+  - ../03-block-critical-cves.yaml
+resources:
+  - good-image.yaml
+  - unsigned-image.yaml
+results:
+  # Good image passes signature verification
+  - policy: require-signature
+    rule: verify-chainguard-signature
+    resources:
+      - good-pod
+    result: pass
+  # Good image passes provenance verification
+  - policy: require-provenance
+    rule: verify-slsa-provenance
+    resources:
+      - good-pod
+    result: pass
+  # Good image passes SBOM verification
+  - policy: require-sbom-attestation
+    rule: verify-sbom-attestation
+    resources:
+      - good-pod
+    result: pass
+  # Good image passes CVE check
+  - policy: block-critical-cves
+    rule: verify-vuln-scan
+    resources:
+      - good-pod
+    result: pass
+  # Unsigned image fails signature verification
+  - policy: require-signature
+    rule: verify-chainguard-signature
+    resources:
+      - unsigned-pod
+    result: fail
