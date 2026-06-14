@@ -287,16 +287,16 @@ jobs:
           IMAGE_REF="${{ needs.build.outputs.image-ref }}"
 
           sed -i "s|image: ${IMAGE_REF}@sha256:.*|image: ${IMAGE_REF}@${DIGEST}|g" \
-            deploy/deployment.yaml
+            deploy/deployment.yml
 
           # Verify the substitution worked
           echo "Updated image reference:"
-          grep "image:" deploy/deployment.yaml
+          grep "image:" deploy/deployment.yml
 
       - name: Commit and push manifest update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add deploy/deployment.yaml
+          git add deploy/deployment.yml
           git diff --staged --quiet || git commit -m "chore: update image to ${{ needs.build.outputs.digest }}"
           git push
