@@ -238,7 +238,7 @@ jobs:
           # a JSON payload matching the vuln attestation predicate schema
           grype sbom:sbom.spdx.json \
             --config .grype.yaml \
-            --output cosign-vuln \
+            --output json \
             --file vuln-attestation.json
 
           echo "Vuln attestation payload:"
