@@ -226,12 +226,28 @@ jobs:
             --predicate sbom.spdx.json \
             --type spdxjson \
             ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
+      
+      - name: Generate and attach signed vuln attestation
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          # Run Grype with cosign-vuln output format, this produces
+          # a JSON payload matching the vuln attestation predicate schema
+          grype sbom:sbom.spdx.json \
+            --config .grype.yaml \
+            --output cosign-vuln \
+            --file vuln-attestation.json
+
+          echo "Vuln attestation payload:"
+          cat vuln-attestation.json | jq '.predicate.scanner'
+
+          # Sign and attach as a cosign vuln attestation
+          cosign attest --yes \
+            --predicate vuln-attestation.json \
+            --type vuln \
+          ${{ needs.build.outputs.image-ref }}@${{ needs.build.outputs.digest }}
 
       - name: Push provenance attestation to OCI registry
-        # Pushes SLSA provenance to the OCI registry as a Sigstore bundle.
-        # This is what Kyverno policy 01-require-provenance verifies.
-        # Without push-to-registry: true, provenance only lives in
-        # GitHub's Attestations API which Kyverno cannot query.
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ needs.build.outputs.image-ref }}

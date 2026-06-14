@@ -1,22 +1,25 @@
+# policy/kyverno/03-block-critical-cves.yaml
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: block-critical-cves
   annotations:
     policies.kyverno.io/title: Block Critical CVEs
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
     policies.kyverno.io/description: >-
-      Verifies that container images have a vulnerability scan attestation and blocks
-      deployment if there are any critical severity vulnerabilities found.
+      Verifies a signed Grype vulnerability attestation is present and
+      that it contains zero critical severity findings. CVEs documented
+      in .grype.yaml are excluded from the attestation by the scanner.
 spec:
-  validationFailureAction: Audit # Default, overridden by kustomization.yaml to Enforce
-  background: false
+  validationFailureAction: Audit   # switch to Enforce after confirming PASS
+  webhookTimeoutSeconds: 30
   rules:
     - name: verify-vuln-scan
       match:
         any:
           - resources:
-              kinds:
-                - Pod
+              kinds: [Pod]
       verifyImages:
         - imageReferences:
             - "ghcr.io/tripleaze/chainguard*"
@@ -24,16 +27,18 @@ spec:
           verifyDigest: true
           required: true
           attestations:
-            - predicateType: https://cosign.sigstore.dev/attestation/vuln/v1
+            - predicateType: cosign.sigstore.dev/attestation/vuln/v1
               attestors:
-                - entries:
+                - count: 1
+                  entries:
                     - keyless:
                         subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
                         issuer: "https://token.actions.githubusercontent.com"
                         rekor:
-                          url: "https://rekor.sigstore.dev"
+                          url: https://rekor.sigstore.dev
+              # Inspect the attestation payload — block if any critical CVEs
               conditions:
                 - all:
-                    - key: "{{ scanner.result.Results[].Vulnerabilities[].Severity | contains(@, 'CRITICAL') }}"
+                    - key: "{{ predicate.results[] | [?vulnerability.severity == 'Critical'] | length(@) }}"
                       operator: Equals
-                      value: false
+                      value: 0
