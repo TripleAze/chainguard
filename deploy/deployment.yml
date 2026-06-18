@@ -29,7 +29,7 @@ spec:
           # CI job 6 (update-manifest) pins this to an exact digest after every build.
           # ArgoCD syncs when this value changes.
           # The digest matches exactly what was signed, scanned, and attested in CI.
-          image: ghcr.io/tripleaze/chainguard@sha256:cdfc1d3eb13767b7dad458a1c9d9a36d38319a16f5e603825f74863407903215
+          image: ghcr.io/tripleaze/chainguard@sha256:54b512a4c17c97161612400f8f0d9b810f3e200613c3f1947f17c70f0ac24ca8
           ports:
             - containerPort: 80
           resources:
