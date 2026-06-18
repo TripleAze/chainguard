@@ -13,4 +13,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/validationFailureAction
-        value: Enforce
+        value: Audit

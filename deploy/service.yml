@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: razz-bug-calenderapp
+  namespace: chainguard-app
+  labels:
+    app: razz-bug-calenderapp
+    app.kubernetes.io/managed-by: argocd
+spec:
+  selector:
+    app: razz-bug-calenderapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

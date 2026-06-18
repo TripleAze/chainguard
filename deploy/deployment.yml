@@ -39,18 +39,3 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
-
----
-# deploy/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: razz-bug-calenderapp
-  namespace: chainguard-app
-spec:
-  selector:
-    app: razz-bug-calenderapp
-  ports:
-    - port: 80
-      targetPort: 80
-  type: ClusterIP
