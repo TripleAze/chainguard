@@ -10,7 +10,7 @@ metadata:
       Verifies an SPDX SBOM attestation is attached to the image,
       signed by the ChainGuard CI workflow.
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   webhookTimeoutSeconds: 30
   rules:
     - name: verify-sbom-attestation
@@ -22,15 +22,16 @@ spec:
       verifyImages:
         - imageReferences:
             - "ghcr.io/tripleaze/chainguard*"
-          mutateDigest: false
+          mutateDigest: true
           verifyDigest: true
           required: true
           attestations:
             - type: https://spdx.dev/Document
               attestors:
                 - count: 1
-                  keyless:
-                    subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
-                    issuer: "https://token.actions.githubusercontent.com"
-                    rekor:
-                      url: "https://rekor.sigstore.dev"
+                  entries:
+                    - keyless:
+                        subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: "https://rekor.sigstore.dev"

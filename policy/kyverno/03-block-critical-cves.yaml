@@ -12,7 +12,7 @@ metadata:
       that it contains zero critical severity findings. CVEs documented
       in .grype.yaml are excluded from the attestation by the scanner.
 spec:
-  validationFailureAction: Audit   # switch to Enforce after confirming PASS
+  validationFailureAction: Enforce
   webhookTimeoutSeconds: 30
   rules:
     - name: verify-vuln-scan
@@ -23,18 +23,19 @@ spec:
       verifyImages:
         - imageReferences:
             - "ghcr.io/tripleaze/chainguard*"
-          mutateDigest: false
+          mutateDigest: true
           verifyDigest: true
           required: true
           attestations:
             - type: cosign.sigstore.dev/attestation/vuln/v1
               attestors:
                 - count: 1
-                  keyless:
-                    subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
-                    issuer: "https://token.actions.githubusercontent.com"
-                    rekor:
-                      url: https://rekor.sigstore.dev
+                  entries:
+                    - keyless:
+                        subject: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekor:
+                          url: "https://rekor.sigstore.dev"
               # Inspect the attestation payload — block if any critical CVEs
               conditions:
                 - all:

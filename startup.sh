@@ -18,7 +18,11 @@ kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.11.4/i
 sleep 15
 
 echo "Applying Kyverno Policies..."
-kubectl apply -k policy/kyverno/
+kubectl apply -k policy/kyverno/                
+
+echo "Installing ArgoCD..."
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 echo "Deploying application workloads..."
 kubectl apply -f deploy/deployment.yml

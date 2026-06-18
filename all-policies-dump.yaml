@@ -1,0 +1,578 @@
+apiVersion: v1
+items:
+- apiVersion: kyverno.io/v1
+  kind: ClusterPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"kyverno.io/v1","kind":"ClusterPolicy","metadata":{"annotations":{"policies.kyverno.io/category":"Supply Chain Security","policies.kyverno.io/description":"Verifies a signed Grype vulnerability attestation is present and that it contains zero critical severity findings. CVEs documented in .grype.yaml are excluded from the attestation by the scanner.","policies.kyverno.io/severity":"critical","policies.kyverno.io/title":"Block Critical CVEs"},"name":"block-critical-cves"},"spec":{"rules":[{"match":{"any":[{"resources":{"kinds":["Pod"]}}]},"name":"verify-vuln-scan","verifyImages":[{"attestations":[{"attestors":[{"count":1,"entries":[{"keyless":{"issuer":"https://token.actions.githubusercontent.com","rekor":{"url":"https://rekor.sigstore.dev"},"subject":"https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"}}]}],"conditions":[{"all":[{"key":"{{ predicate.results[] | [?vulnerability.severity == 'Critical'] | length(@) }}","operator":"Equals","value":0}]}],"type":"cosign.sigstore.dev/attestation/vuln/v1"}],"imageReferences":["ghcr.io/tripleaze/chainguard*"],"mutateDigest":true,"required":true,"verifyDigest":true}]}],"validationFailureAction":"Enforce","webhookTimeoutSeconds":30}}
+      policies.kyverno.io/category: Supply Chain Security
+      policies.kyverno.io/description: Verifies a signed Grype vulnerability attestation
+        is present and that it contains zero critical severity findings. CVEs documented
+        in .grype.yaml are excluded from the attestation by the scanner.
+      policies.kyverno.io/severity: critical
+      policies.kyverno.io/title: Block Critical CVEs
+    creationTimestamp: "2026-06-18T17:00:15Z"
+    generation: 1
+    name: block-critical-cves
+    resourceVersion: "25075"
+    uid: c8bac42f-6b1a-406c-9f5d-e8b093a79492
+  spec:
+    admission: true
+    background: true
+    rules:
+    - match:
+        any:
+        - resources:
+            kinds:
+            - Pod
+      name: verify-vuln-scan
+      skipBackgroundRequests: true
+      verifyImages:
+      - attestations:
+        - attestors:
+          - count: 1
+            entries:
+            - keyless:
+                issuer: https://token.actions.githubusercontent.com
+                rekor:
+                  url: https://rekor.sigstore.dev
+                subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+          conditions:
+          - all:
+            - key: '{{ predicate.results[] | [?vulnerability.severity == ''Critical'']
+                | length(@) }}'
+              operator: Equals
+              value: 0
+          type: cosign.sigstore.dev/attestation/vuln/v1
+        imageReferences:
+        - ghcr.io/tripleaze/chainguard*
+        mutateDigest: true
+        required: true
+        useCache: true
+        verifyDigest: true
+    validationFailureAction: Enforce
+    webhookTimeoutSeconds: 30
+  status:
+    autogen:
+      rules:
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - DaemonSet
+              - Deployment
+              - Job
+              - StatefulSet
+              - ReplicaSet
+              - ReplicationController
+          resources: {}
+        mutate: {}
+        name: autogen-verify-vuln-scan
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            conditions:
+            - all:
+              - key: '{{ predicate.results[] | [?vulnerability.severity == ''Critical'']
+                  | length(@) }}'
+                operator: Equals
+                value: 0
+            predicateType: ""
+            type: cosign.sigstore.dev/attestation/vuln/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - CronJob
+          resources: {}
+        mutate: {}
+        name: autogen-cronjob-verify-vuln-scan
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            conditions:
+            - all:
+              - key: '{{ predicate.results[] | [?vulnerability.severity == ''Critical'']
+                  | length(@) }}'
+                operator: Equals
+                value: 0
+            predicateType: ""
+            type: cosign.sigstore.dev/attestation/vuln/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+    conditions:
+    - lastTransitionTime: "2026-06-18T17:00:15Z"
+      message: Ready
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    ready: true
+    rulecount:
+      generate: 0
+      mutate: 0
+      validate: 0
+      verifyimages: 1
+    validatingadmissionpolicy:
+      generated: false
+      message: ""
+- apiVersion: kyverno.io/v1
+  kind: ClusterPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"kyverno.io/v1","kind":"ClusterPolicy","metadata":{"annotations":{"policies.kyverno.io/description":"Verifies that a SLSA provenance attestation is attached to the image, signed by the SLSA GitHub generator's OIDC identity, and that it references the expected source repository.","policies.kyverno.io/title":"Require SLSA Provenance"},"name":"require-provenance"},"spec":{"rules":[{"match":{"any":[{"resources":{"kinds":["Pod"]}}]},"name":"verify-slsa-provenance","verifyImages":[{"attestations":[{"attestors":[{"count":1,"entries":[{"keyless":{"issuer":"https://token.actions.githubusercontent.com","rekor":{"url":"https://rekor.sigstore.dev"},"subject":"https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"}}]}],"conditions":[{"all":[{"key":"{{repository}}","operator":"Equals","value":"https://github.com/TripleAze/chainguard"}]}],"type":"https://slsa.dev/provenance/v1"}],"imageReferences":["ghcr.io/tripleaze/chainguard*"],"mutateDigest":true,"required":true,"verifyDigest":true}]}],"validationFailureAction":"Enforce","webhookTimeoutSeconds":30}}
+      policies.kyverno.io/description: Verifies that a SLSA provenance attestation
+        is attached to the image, signed by the SLSA GitHub generator's OIDC identity,
+        and that it references the expected source repository.
+      policies.kyverno.io/title: Require SLSA Provenance
+    creationTimestamp: "2026-06-18T17:00:15Z"
+    generation: 1
+    name: require-provenance
+    resourceVersion: "25078"
+    uid: 095c0230-ad5c-4ee9-b5ad-1e6ef8ef2f1f
+  spec:
+    admission: true
+    background: true
+    rules:
+    - match:
+        any:
+        - resources:
+            kinds:
+            - Pod
+      name: verify-slsa-provenance
+      skipBackgroundRequests: true
+      verifyImages:
+      - attestations:
+        - attestors:
+          - count: 1
+            entries:
+            - keyless:
+                issuer: https://token.actions.githubusercontent.com
+                rekor:
+                  url: https://rekor.sigstore.dev
+                subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+          conditions:
+          - all:
+            - key: '{{repository}}'
+              operator: Equals
+              value: https://github.com/TripleAze/chainguard
+          type: https://slsa.dev/provenance/v1
+        imageReferences:
+        - ghcr.io/tripleaze/chainguard*
+        mutateDigest: true
+        required: true
+        useCache: true
+        verifyDigest: true
+    validationFailureAction: Enforce
+    webhookTimeoutSeconds: 30
+  status:
+    autogen:
+      rules:
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - DaemonSet
+              - Deployment
+              - Job
+              - StatefulSet
+              - ReplicaSet
+              - ReplicationController
+          resources: {}
+        mutate: {}
+        name: autogen-verify-slsa-provenance
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            conditions:
+            - all:
+              - key: '{{repository}}'
+                operator: Equals
+                value: https://github.com/TripleAze/chainguard
+            predicateType: ""
+            type: https://slsa.dev/provenance/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - CronJob
+          resources: {}
+        mutate: {}
+        name: autogen-cronjob-verify-slsa-provenance
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            conditions:
+            - all:
+              - key: '{{repository}}'
+                operator: Equals
+                value: https://github.com/TripleAze/chainguard
+            predicateType: ""
+            type: https://slsa.dev/provenance/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+    conditions:
+    - lastTransitionTime: "2026-06-18T17:00:15Z"
+      message: Ready
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    ready: true
+    rulecount:
+      generate: 0
+      mutate: 0
+      validate: 0
+      verifyimages: 1
+    validatingadmissionpolicy:
+      generated: false
+      message: ""
+- apiVersion: kyverno.io/v1
+  kind: ClusterPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"kyverno.io/v1","kind":"ClusterPolicy","metadata":{"annotations":{"policies.kyverno.io/category":"Supply Chain Security","policies.kyverno.io/description":"Verifies an SPDX SBOM attestation is attached to the image, signed by the ChainGuard CI workflow.","policies.kyverno.io/severity":"medium","policies.kyverno.io/title":"Require SBOM Attestation"},"name":"require-sbom-attestation"},"spec":{"rules":[{"match":{"any":[{"resources":{"kinds":["Pod"]}}]},"name":"verify-sbom-attestation","verifyImages":[{"attestations":[{"attestors":[{"count":1,"entries":[{"keyless":{"issuer":"https://token.actions.githubusercontent.com","rekor":{"url":"https://rekor.sigstore.dev"},"subject":"https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"}}]}],"type":"https://spdx.dev/Document"}],"imageReferences":["ghcr.io/tripleaze/chainguard*"],"mutateDigest":true,"required":true,"verifyDigest":true}]}],"validationFailureAction":"Enforce","webhookTimeoutSeconds":30}}
+      policies.kyverno.io/category: Supply Chain Security
+      policies.kyverno.io/description: Verifies an SPDX SBOM attestation is attached
+        to the image, signed by the ChainGuard CI workflow.
+      policies.kyverno.io/severity: medium
+      policies.kyverno.io/title: Require SBOM Attestation
+    creationTimestamp: "2026-06-18T17:00:16Z"
+    generation: 1
+    name: require-sbom-attestation
+    resourceVersion: "25084"
+    uid: b6eab414-2ab2-4027-b031-f84eb0be562d
+  spec:
+    admission: true
+    background: true
+    rules:
+    - match:
+        any:
+        - resources:
+            kinds:
+            - Pod
+      name: verify-sbom-attestation
+      skipBackgroundRequests: true
+      verifyImages:
+      - attestations:
+        - attestors:
+          - count: 1
+            entries:
+            - keyless:
+                issuer: https://token.actions.githubusercontent.com
+                rekor:
+                  url: https://rekor.sigstore.dev
+                subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+          type: https://spdx.dev/Document
+        imageReferences:
+        - ghcr.io/tripleaze/chainguard*
+        mutateDigest: true
+        required: true
+        useCache: true
+        verifyDigest: true
+    validationFailureAction: Enforce
+    webhookTimeoutSeconds: 30
+  status:
+    autogen:
+      rules:
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - DaemonSet
+              - Deployment
+              - Job
+              - StatefulSet
+              - ReplicaSet
+              - ReplicationController
+          resources: {}
+        mutate: {}
+        name: autogen-verify-sbom-attestation
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            predicateType: ""
+            type: https://spdx.dev/Document
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - CronJob
+          resources: {}
+        mutate: {}
+        name: autogen-cronjob-verify-sbom-attestation
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            predicateType: ""
+            type: https://spdx.dev/Document
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+    conditions:
+    - lastTransitionTime: "2026-06-18T17:00:16Z"
+      message: Ready
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    ready: true
+    rulecount:
+      generate: 0
+      mutate: 0
+      validate: 0
+      verifyimages: 1
+    validatingadmissionpolicy:
+      generated: false
+      message: ""
+- apiVersion: kyverno.io/v1
+  kind: ClusterPolicy
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"kyverno.io/v1","kind":"ClusterPolicy","metadata":{"annotations":{"policies.kyverno.io/description":"Verifies that container images are signed using Cosign keyless signing, with a certificate issued to the ChainGuard CI workflow via GitHub's OIDC issuer. Images that fail verification are reported (audit mode) or blocked (enforce mode).","policies.kyverno.io/title":"Require Cosign Signature"},"name":"require-signature"},"spec":{"rules":[{"match":{"any":[{"resources":{"kinds":["Pod"]}}]},"name":"verify-chainguard-signature","verifyImages":[{"attestations":[{"attestors":[{"count":1,"entries":[{"keyless":{"issuer":"https://token.actions.githubusercontent.com","rekor":{"url":"https://rekor.sigstore.dev"},"subject":"https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"}}]}],"type":"https://slsa.dev/provenance/v1"}],"imageReferences":["ghcr.io/tripleaze/chainguard*"],"mutateDigest":true,"required":true,"verifyDigest":true}]}],"validationFailureAction":"Enforce","webhookTimeoutSeconds":30}}
+      policies.kyverno.io/description: Verifies that container images are signed using
+        Cosign keyless signing, with a certificate issued to the ChainGuard CI workflow
+        via GitHub's OIDC issuer. Images that fail verification are reported (audit
+        mode) or blocked (enforce mode).
+      policies.kyverno.io/title: Require Cosign Signature
+    creationTimestamp: "2026-06-18T17:00:16Z"
+    generation: 1
+    name: require-signature
+    resourceVersion: "25091"
+    uid: 1f91ea92-56e9-47ae-a576-933cc789adc0
+  spec:
+    admission: true
+    background: true
+    rules:
+    - match:
+        any:
+        - resources:
+            kinds:
+            - Pod
+      name: verify-chainguard-signature
+      skipBackgroundRequests: true
+      verifyImages:
+      - attestations:
+        - attestors:
+          - count: 1
+            entries:
+            - keyless:
+                issuer: https://token.actions.githubusercontent.com
+                rekor:
+                  url: https://rekor.sigstore.dev
+                subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+          type: https://slsa.dev/provenance/v1
+        imageReferences:
+        - ghcr.io/tripleaze/chainguard*
+        mutateDigest: true
+        required: true
+        useCache: true
+        verifyDigest: true
+    validationFailureAction: Enforce
+    webhookTimeoutSeconds: 30
+  status:
+    autogen:
+      rules:
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - DaemonSet
+              - Deployment
+              - Job
+              - StatefulSet
+              - ReplicaSet
+              - ReplicationController
+          resources: {}
+        mutate: {}
+        name: autogen-verify-chainguard-signature
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            predicateType: ""
+            type: https://slsa.dev/provenance/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+      - exclude:
+          resources: {}
+        generate:
+          clone: {}
+          cloneList: {}
+        match:
+          any:
+          - resources:
+              kinds:
+              - CronJob
+          resources: {}
+        mutate: {}
+        name: autogen-cronjob-verify-chainguard-signature
+        skipBackgroundRequests: true
+        validate: {}
+        verifyImages:
+        - attestations:
+          - attestors:
+            - count: 1
+              entries:
+              - keyless:
+                  issuer: https://token.actions.githubusercontent.com
+                  rekor:
+                    url: https://rekor.sigstore.dev
+                  subject: https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main
+            predicateType: ""
+            type: https://slsa.dev/provenance/v1
+          imageReferences:
+          - ghcr.io/tripleaze/chainguard*
+          mutateDigest: true
+          required: true
+          useCache: true
+          verifyDigest: true
+    conditions:
+    - lastTransitionTime: "2026-06-18T17:00:16Z"
+      message: Ready
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    ready: true
+    rulecount:
+      generate: 0
+      mutate: 0
+      validate: 0
+      verifyimages: 1
+    validatingadmissionpolicy:
+      generated: false
+      message: ""
+kind: List
+metadata:
+  resourceVersion: ""
