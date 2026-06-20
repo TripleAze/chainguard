@@ -14,7 +14,7 @@ fi
 kubectl delete -k policy/kyverno/ --ignore-not-found=true || true
 
 echo "🔥 Destroying Terraform infrastructure..."
-cd infa/terraform
+cd infra/terraform
 terraform destroy -var-file=chainguard.tfvars -auto-approve
 
 echo "✅ Destroy complete! You can seamlessly run ./startup.sh to provision everything again."
