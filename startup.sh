@@ -12,7 +12,7 @@ aws eks update-kubeconfig --region us-east-1 --name chainguard-eks
 
 cd ../../
 
-# Optional: Install Kyverno if it isn't already installed on the fresh cluster
+
 echo "Installing Kyverno..."
 kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.11.4/install.yaml
 sleep 15
