@@ -36,6 +36,6 @@ spec:
                           url: "https://rekor.sigstore.dev"
               conditions:
                 - all:
-                    - key: "{{repository}}"
+                    - key: "{{ buildDefinition.externalParameters.workflow.repository }}"
                       operator: Equals
                       value: "https://github.com/TripleAze/chainguard"

@@ -27,7 +27,7 @@ spec:
           verifyDigest: true
           required: true
           attestations:
-            - type: cosign.sigstore.dev/attestation/vuln/v1
+            - type: https://cosign.sigstore.dev/attestation/vuln/v1
               attestors:
                 - count: 1
                   entries:

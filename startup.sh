@@ -2,7 +2,7 @@
 set -e
 
 echo "Starting infrastructure provisioning..."
-cd infa/terraform
+cd infra/terraform
 terraform init
 terraform apply -var-file=chainguard.tfvars -auto-approve
 
