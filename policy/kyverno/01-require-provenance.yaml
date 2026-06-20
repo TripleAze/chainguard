@@ -6,7 +6,7 @@ metadata:
     policies.kyverno.io/title: Require SLSA Provenance
     policies.kyverno.io/description: >-
       Verifies that a SLSA provenance attestation is attached to the
-      image, signed by the SLSA GitHub generator's OIDC identity, and
+      image, signed by the ChainGuard CI workflow's OIDC identity, and
       that it references the expected source repository.
 spec:
   validationFailureAction: Enforce
@@ -25,7 +25,7 @@ spec:
           verifyDigest: true
           required: true
           attestations:
-            - type: https://slsa.dev/provenance/v1
+            - type: "https://slsa.dev/provenance/v1"
               attestors:
                 - count: 1
                   entries:
@@ -36,6 +36,6 @@ spec:
                           url: "https://rekor.sigstore.dev"
               conditions:
                 - all:
-                    - key: "{{ buildDefinition.externalParameters.workflow.repository }}"
+                    - key: "{{repository}}"
                       operator: Equals
                       value: "https://github.com/TripleAze/chainguard"

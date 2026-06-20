@@ -10,8 +10,6 @@ metadata:
       via GitHub's OIDC issuer. Images that fail verification are
       reported (audit mode) or blocked (enforce mode).
 spec:
-
-# AUDIT first: violations are logged in PolicyReports, pods still admitted
   validationFailureAction: Enforce
   webhookTimeoutSeconds: 30
   rules:
