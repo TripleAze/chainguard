@@ -1,83 +1,132 @@
 # ChainGuard
 
-ChainGuard is a supply chain security enforcement pipeline for container-based workflows, implementing SBOM generation, vulnerability scanning, keyless image signing, and SLSA provenance attestation, all enforced as CI gates with zero stored secrets.
+A supply chain security enforcement toolkit for container-based workflows implementing SBOM generation, vulnerability scanning, keyless image signing, SLSA provenance, and Kubernetes admission control, all enforced end to end with zero stored secrets.
 
 ## What This Is
 
 Every container image that comes out of this pipeline carries cryptographic evidence answering four questions:
 
-1. **What's inside it?** — a full Software Bill of Materials (SBOM)
-2. **Is it safe?** — scanned against the live CVE database, with a documented exception policy
-3. **Did it come from us?** — signed using keyless OIDC-based signing (no stored private keys)
-4. **How was it built?** — SLSA Level 2 provenance recording the exact commit, workflow, and builder
+1. **What's inside it?**  a full Software Bill of Materials (SBOM)
+2. **Is it safe?**  scanned against the live CVE database, gated on criticals, with a documented exception policy
+3. **Did it come from us?**  signed using keyless OIDC-based signing (no stored private keys)
+4. **How was it built?**  SLSA Level 2 provenance recording the exact commit, workflow, and builder
 
-## Pipeline Overview
+And at deploy time, **Kyverno admission control enforces all four** nothing runs in the cluster unless it can prove all of the above.
+
+## Architecture
 
 ```
-push to main
-     │
-     ▼
-┌─────────┐   ┌──────────────┐   ┌───────────┐   ┌──────────────────┐   ┌────────────┐
-│  build  │──▶│ generate-sbom│──▶│ scan-sbom │──▶│  sign-and-attest │──▶│ provenance │
-└─────────┘   └──────────────┘   └───────────┘   └──────────────────┘   └────────────┘
-   builds        Syft generates      Grype scans     Cosign signs the      SLSA generator
-   multi-arch    SPDX SBOM from      SBOM, fails      image digest and      produces signed
-   image, push   the pushed image    on unfixed       attaches SBOM as      provenance,
-   to GHCR       digest              criticals        a signed attestation  attached to image
+Developer pushes code
+        │
+        ▼
+┌───────────────────────────────────────────────────────┐
+│                   GitHub Actions CI                    │
+│                                                        │
+│  build ──▶ generate-sbom ──▶ scan-sbom                │
+│                                   │                   │
+│                              CVE gate                  │
+│                           (fail on critical)           │
+│                                   │                   │
+│                                   ▼                   │
+│                          sign-and-attest               │
+│                         ┌──────────────┐              │
+│                         │ cosign sign  │ → .sig       │
+│                         │ attest SBOM  │ → .att       │
+│                         │ attest vuln  │ → .att       │
+│                         │ attest prov  │ → OCI ref    │
+│                         └──────────────┘              │
+│                                   │                   │
+│                            provenance                  │
+│                         (SLSA generator)               │
+│                                   │                   │
+│                          update-manifest               │
+│                      (pins digest in Git)              │
+└───────────────────────────────────────────────────────┘
+        │
+        ▼ Git commit to deploy/deployment.yml
+┌───────────────────────────────────────────────────────┐
+│                       ArgoCD                           │
+│                                                        │
+│  Watches deploy/ directory                             │
+│  Detects digest change → syncs EKS cluster            │
+│  Self-healing: reverts manual cluster changes          │
+│  Every deployment traceable to a Git commit            │
+└───────────────────────────────────────────────────────┘
+        │
+        ▼ pod admission
+┌───────────────────────────────────────────────────────┐
+│              Kyverno Admission Control (EKS)           │
+│                                                        │
+│  require-signature     → Enforce                       │
+│  require-provenance    → Enforce                       │
+│  require-sbom          → Enforce                       │
+│  block-critical-cves   → Enforce                       │
+│                                                        │
+│  Unsigned or unattested images → BLOCKED               │
+└───────────────────────────────────────────────────────┘
 ```
 
-Every step operates on the **image digest**, never a mutable tag, so what gets scanned, signed, and attested is guaranteed to be exactly what was pushed.
+## What Gets Produced Per Build
 
-## What Gets Produced
-
-For an image at `ghcr.io/tripleaze/chainguard@sha256:<digest>`:
-
-| Artifact | Format | Where |
+| Artifact | Format | Location |
 |---|---|---|
-| Container image | OCI image, multi-arch | GHCR, tagged `main` / `sha-<commit>` |
-| SBOM | SPDX JSON | Workflow artifact (`sbom.spdx.json`) |
-| SBOM attestation | Signed in-toto attestation | GHCR, `.att` tag |
-| Image signature | Cosign signature | GHCR, `.sig` tag |
-| SLSA provenance | Signed in-toto attestation (SLSA v1) | GHCR `.att` tag + GitHub Attestations API |
+| Container image | OCI, linux/amd64 | GHCR, tagged `main` / `sha-<commit>` |
+| SBOM | SPDX JSON | Workflow artifact + OCI `.att` attestation |
 | CVE scan results | SARIF | GitHub Security tab (Code Scanning) |
+| Vuln attestation | cosign vuln predicate | OCI `.att` attestation |
+| Image signature | Cosign keyless | OCI `.sig` tag |
+| SLSA provenance | SLSA v0.2 | OCI referrers API |
+| Deployment manifest | Kubernetes YAML | `deploy/deployment.yml` (digest-pinned) |
 
 ## Verifying an Image
 
 ```bash
-# Verify the signature was produced by this repo's CI
+# View the full supply chain artifact tree
+cosign tree ghcr.io/tripleaze/chainguard@sha256:<digest>
+
+# Verify the Cosign signature
 cosign verify \
   --certificate-identity-regexp="https://github.com/TripleAze/chainguard" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
   ghcr.io/tripleaze/chainguard@sha256:<digest>
 
-# View the SLSA provenance
+# Verify SLSA provenance via GitHub CLI
 gh attestation verify oci://ghcr.io/tripleaze/chainguard@sha256:<digest> -o tripleaze
 
-# Extract the SBOM attestation
+# Extract the SBOM
 cosign download attestation ghcr.io/tripleaze/chainguard@sha256:<digest> \
-  | jq -r '.payload' | base64 -d | jq '.predicate'
+  | jq -r '.payload' | base64 -d \
+  | jq 'select(.predicateType == "https://spdx.dev/Document") | .predicate'
+
+# Extract the vuln attestation summary
+cosign download attestation ghcr.io/tripleaze/chainguard@sha256:<digest> \
+  | jq -r '.payload' | base64 -d \
+  | jq 'select(.predicateType == "cosign.sigstore.dev/attestation/vuln/v1")
+        | .predicate.scanner | {version, db, findings: (.result | length)}'
 ```
 
 ## CVE Exception Policy
 
-CVEs with no available fix are documented in [`.grype.yaml`](.grype.yaml), each with:
-- A specific CVE identifier (no blanket ignores)
-- A written justification and mitigation
-- An expiry date forcing periodic re-evaluation
+CVEs with no available fix are documented in [`.grype.yaml`](.grype.yaml), each with a specific CVE identifier, a written justification and mitigation, and an expiry date forcing periodic re-evaluation. No blanket ignores are permitted.
 
-The pipeline gate fails the build on any **critical** CVE that has an available fix and is not explicitly documented as an exception. High/medium findings are surfaced via SARIF for visibility without blocking.
+The pipeline gate fails on any critical CVE that has an available fix and is not explicitly documented. High/medium findings are surfaced via SARIF for visibility without blocking.
 
-## Multi-Stage Build Hardening
+## Repo Structure
 
-The Dockerfile is multi-stage (`build` → `production`). OS package upgrades (`apk upgrade --no-cache`) are applied in **every stage that contributes to the final image**, as patching only the build stage has no effect on the shipped image, since only the final `FROM` stage's layers are retained.
-
-## Architecture & Design Decisions
-
-See [`docs/architecture.md`](docs/architecture.md) for the full design rationale, including why keyless signing was chosen over stored keys, how the digest-pinning guarantee works end to end, and the SLSA level achieved.
+```
+chainguard/
+├── .github/workflows/ci.yml       # 6-job CI pipeline
+├── razz-bug-calenderapp/          # Sample app (nginx SPA, multi-stage Dockerfile)
+├── deploy/deployment.yml          # Digest-pinned manifest, managed by CI + ArgoCD
+├── argocd/application.yaml        # ArgoCD Application manifest
+├── policy/kyverno/                # Kyverno ClusterPolicies (all in Enforce)
+├── .grype.yaml                    # CVE exception policy with documented ignores
+└── docs/architecture.md           # Design rationale and decisions
+```
 
 ## Roadmap
 
-- [x] **Phase 1** — CI pipeline: SBOM, scan, sign, attest, provenance
-- [ ] **Phase 2** — Kyverno admission policies enforcing signature/SBOM/provenance at deploy time
-- [ ] **Phase 3** — `chaincheck` CLI for one-command trust inspection of any image
-- [ ] **Phase 4** — Compliance dashboard with release history and CVE trends
+- [x] **Phase 1** — CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
+- [x] **Phase 2** — GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
+- [ ] **Phase 3** — `chaincheck` CLI: one-command trust inspection for any image
+- [ ] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail

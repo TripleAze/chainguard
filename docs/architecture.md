@@ -1,94 +1,114 @@
-# ChainGuard Architecture & Design Decisions
+# ChainGuard  Architecture & Design Decisions
 
 ## Problem Statement
 
-A container image moves through several hand-offs before it runs in production: source code → CI build → registry → CD deploy → runtime. At each hand-off, the image could be tampered with, built from an unreviewed source, or carry a vulnerable dependency — and downstream, nobody can tell.
+A container image moves through several hand-offs before it runs in production: source code → CI build → registry → CD deploy → runtime. At each step, something could go wrong, like a vulnerable dependency, a tampered image, a build from an unreviewed source, or a deployment bypassing the security pipeline entirely.
 
-ChainGuard's Phase 1 goal: make every image that leaves CI carry verifiable, signed evidence of what it contains and how it was built, so that evidence can later be checked before the image is allowed to run (Phase 2).
+ChainGuard's goal: make every image that reaches production carry **verifiable, signed evidence** of what it contains and how it was built, enforced automatically at every layer.
 
-## Why Keyless Signing (Cosign + Sigstore + OIDC)
+---
 
-The alternative is a static Cosign key pair: a private key stored as a GitHub Actions secret, used to sign every image.
+## Phase 1 — CI Pipeline
 
-The problem with that: the private key is a long-lived secret. If it leaks, every image ever signed with it is suspect, and rotation requires re-signing everything and updating every verifier. It's also one more secret to manage, audit, and eventually find expired or forgotten.
+### Why Keyless Signing (Cosign + Sigstore + OIDC)
 
-Keyless signing instead uses identity, not secrets:
+The alternative is a static key pair stored as a GitHub Actions secret. The problem: a long-lived private key is a persistent attack surface. If it leaks, every image ever signed is suspect, and rotation requires re-signing everything and updating every verifier.
 
-- The GitHub Actions runner requests a short-lived OIDC token from GitHub. This token cryptographically asserts "I am workflow `ci.yml`, in repo `TripleAze/chainguard`, on ref `refs/heads/main`, triggered by event `push`."
-- Cosign presents that token to Sigstore's Fulcio certificate authority, which issues a short-lived (10-minute) signing certificate bound to that identity.
-- Cosign signs the image digest with the corresponding ephemeral private key, which is discarded immediately after.
-- The certificate and signature are recorded in Rekor, a public, append-only transparency log, anyone can audit when something was signed, even if they don't trust the signer.
-- To verify, a verifier checks: "was this signed by a certificate issued to `TripleAze/chainguard`'s `ci.yml` workflow, by Fulcio, and logged in Rekor?", no shared secret required on either side.
+Keyless signing uses identity instead of secrets:
 
-Trade-off acknowledged: this ties signing identity to GitHub's OIDC issuer. If you move CI providers, verification policy needs to be updated (`--certificate-oidc-issuer`). For a single-provider setup this is an acceptable and arguably more secure trade-off than key management.
+1. GitHub Actions requests a short-lived OIDC token asserting: "I am workflow `ci.yml`, repo `TripleAze/chainguard`, ref `refs/heads/main`."
+2. Cosign presents that token to Sigstore's **Fulcio** CA, which issues a short-lived (10-minute) signing certificate bound to that identity.
+3. Cosign signs the image digest and discards the ephemeral key immediately after.
+4. The certificate and signature are recorded in **Rekor**, a public append-only transparency log.
+5. Verification requires no shared secret — just the expected OIDC issuer and identity.
 
-## Why Sign and Attest the Digest, Not the Tag
+Trade-off: signing identity is tied to GitHub's OIDC issuer. Moving CI providers requires updating verification policy. For a single-provider setup this is more secure than key management.
 
-Tags (`main`, `latest`, `v1.2.3`) are mutable, meaning a tag can be repointed to a different image at any time. The digest (`sha256:...`) is a content hash, it can never change without becoming a different digest.
+### Why Sign and Attest the Digest, Not the Tag
 
-Every signing and attestation operation in the pipeline operates on `${{ needs.build.outputs.digest }}`, the exact digest produced by the build job's push. This guarantees:
+Tags are mutable, meaning they can be repointed to a different image at any time. The digest (`sha256:...`) is a content hash and is immutable by definition.
 
-- The SBOM was generated from this exact image, not a same-tag-different-content image pushed later
-- The signature covers this exact image
-- The provenance describes this exact image's build
+Every operation in the pipeline, like signing, SBOM generation, vuln scanning, attestation, references `image@digest`. This guarantees the SBOM, signature, and provenance all describe the same exact artifact, with no gap for tag-based substitution attacks.
 
-A verifier checking `image:main` first resolves it to a digest, then verifies signatures/attestations against that digest, closing the gap that tag mutability would otherwise leave open.
+### Why SBOM Generation Runs Post-Build Against the Pushed Image
 
-## Why SBOM Generation Happens Post-Build, From the Pushed Image
+Syft runs against the pushed image digest, not the build context. This means the SBOM reflects what's actually in the shipped artifact, including base image layers, transitive OS packages, and anything introduced by the build process, not just what's declared in `package.json` or the Dockerfile.
 
-Syft runs against `image-ref@digest` the pushed image rather than against the build context or Dockerfile. This means the SBOM reflects what's actually in the shipped artifact, including base image layers, transitive OS packages, and anything introduced by the build process itself — not just what's declared in `package.json` or the `Dockerfile`.
+### The CVE Gate Design
 
-## The CVE Gate: Design Reasoning
+A naive gate ("fail on any CVE") is unworkable, because base images always carry some unfixed CVEs, and a gate that never passes gets disabled. ChainGuard's gate logic:
 
-A naive gate ("fail on any CVE") is unworkable, base images always carry some unfixed CVEs, and a gate that can never pass gets disabled or ignored, which defeats the purpose.
-
-ChainGuard's gate logic:
-
+```
 For each CVE found in the SBOM:
-- if severity < critical:
-    → report via SARIF, do not block
-- if severity == critical:
-    - if a fix is available:
-        → BLOCK. This is always actionable.
-    - if no fix is available:
-        - if documented in `.grype.yaml` with reason + expiry:
-            → allow, but visible in scan report
-        - else:
-            → BLOCK
-
-This makes the gate always passable through legitimate action, either fix the package, or make a documented, time-bound risk acceptance decision. It avoids both failure modes: a gate that blocks everything (gets bypassed) and a gate that blocks nothing (provides no value).
-
-The `.grype.yaml` ignore list is itself part of the audit trail, it's version-controlled, requires a PR to change, and each entry has an expiry date forcing periodic re-review.
-
-## Multi-Stage Build and the "Last FROM Wins" Principle
-
-A multi-stage Dockerfile discards every stage except what's copied into the final stage. Security hardening applied to an intermediate stage (e.g., `apk upgrade` in a build stage) has zero effect on the shipped image if the final stage starts from a separate `FROM`.
-
-ChainGuard applies `apk upgrade --no-cache` independently in each stage, treating every `FROM` as its own container requiring its own hardening. I discovered this empirically during Phase 1, the build stage was patched, the production `nginx:alpine` stage was not, and the scan continued to report the same criticals until the production stage was patched directly.
-
-## SLSA Provenance: What Level, and Why It Matters
-
-The pipeline uses `slsa-framework/slsa-github-generator`'s container workflow, which produces SLSA v1.0 provenance meeting SLSA Build Level 2 requirements:
-
-- The build runs on a hosted, ephemeral build platform (GitHub-hosted runners), not a developer machine
-- Provenance is generated by a process isolated from the main build job (a separate reusable workflow, not a step the build job could tamper with)
-- Provenance is signed and includes the source repository, commit SHA, workflow path, and trigger event
-
-The provenance payload (`predicateType: https://slsa.dev/provenance/v1`) is attached to the image as a Cosign attestation and registered with GitHub's native Attestations API, so it's verifiable via either `cosign verify-attestation` or `gh attestation verify`.
-
-What Level 2 proves: "this artifact was built by an automated, isolated process from this exact source commit", ruling out builds from unreviewed local machines or builds where the provenance-generation step could be manipulated by the build step itself.
-
-What it does not yet prove (Level 3+): hermetic builds (no network access during build) and fully isolated build environments per-build. That's a possible future enhancement but out of scope for Phase 1.
-
-## Permissions Model
-
-```yaml
-permissions:
-  contents: read         # checkout only
-  packages: write        # push image + attestations to GHCR
-  id-token: write        # request OIDC tokens for keyless signing
-  attestations: write    # register attestations with GitHub's API
-  security-events: write # upload SARIF to Code Scanning
+  if severity < critical:
+      report via SARIF, do not block
+  if severity == critical:
+      if a fix is available:
+          BLOCK — always actionable
+      if no fix available:
+          if documented in .grype.yaml with reason + expiry:
+              allow, visible in scan report
+          else:
+              BLOCK
 ```
 
-No long-lived secrets are used anywhere in the pipeline. `GITHUB_TOKEN` (automatically scoped and rotated per-run) handles GHCR authentication; OIDC handles signing identity.
+Every ignore entry in `.grype.yaml` requires a specific CVE ID (no wildcards), a written justification and mitigation, and an expiry date forcing re-evaluation. The file is version-controlled and requires a PR to change.
+
+SARIF is uploaded **before** the gate step runs, so the GitHub Security tab is always populated with findings regardless of whether the build passed or failed.
+
+### The Multi-Stage Build Trap
+
+A multi-stage Dockerfile discards every stage except what's copied into the final stage. Applying `apk upgrade --no-cache` only in the build stage has zero effect on the shipped image, because the final `FROM nginx:alpine` stage starts fresh with its own unpatched packages.
+
+ChainGuard applies `apk upgrade --no-cache` independently in each stage. This was discovered empirically during Phase 1 where the build stage was patched, the production nginx stage was not, and Grype continued reporting the same criticals. The fix was to treat every `FROM` as a separate container requiring its own hardening.
+
+### Three Attestation Types, Three Purposes
+
+| Attestation | Predicate type | Purpose |
+|---|---|---|
+| SBOM | `https://spdx.dev/Document` | Full package inventory for auditing and CVE correlation |
+| Vuln scan | `cosign.sigstore.dev/attestation/vuln/v1` | Signed evidence that a scan was performed and its results |
+| Provenance | `https://slsa.dev/provenance/v0.2` | Proof of where, when, and how the image was built |
+
+Note: `cosign-vuln` was removed as a Grype output format in v0.80+. The vuln predicate is now built by running Grype with `--output json` and transforming the result into the predicate schema via `jq`. The `--type vuln` flag in `cosign attest` sets the correct `predicateType` in the in-toto envelope regardless of how the predicate file was constructed.
+
+### OCI Referrers vs Cosign Tag Convention
+
+Cosign originally stored attestations as OCI tags (`sha256-<digest>.att`). The OCI 1.1 spec introduced a standard **referrers API** for associating artifacts with a subject. `actions/attest-build-provenance` uses the newer referrers API, which is why the SLSA provenance appears as `🔗 via OCI referrer` in `cosign tree` output rather than as a `.att` tag.
+
+Kyverno 1.11+ supports querying both conventions. Policies that check `type: https://slsa.dev/provenance/v0.2` will find the provenance regardless of how it's stored, as long as Kyverno is on a supported version.
+
+---
+
+## Phase 2 — Admission Control
+
+### Why Kyverno Over OPA/Gatekeeper
+
+Both are valid choices. Kyverno was chosen because:
+- Native `verifyImages` block with built-in Cosign/Sigstore integration, no custom Rego required
+- `ClusterPolicy` is Kubernetes-native YAML with no separate policy language to learn
+- Autogen feature automatically extends Pod-level policies to Deployments, StatefulSets, etc.
+
+### The `mutateDigest` / `Audit` Constraint
+
+Kyverno enforces a constraint: `mutateDigest: true` is only valid when `validationFailureAction: Enforce`. In Audit mode, Kyverno cannot mutate the pod spec (it's read-only), so digest mutation must be disabled.
+
+The correct pattern for a staged rollout:
+- **Audit mode**: `mutateDigest: false`, `verifyDigest: true` -> violations logged, pods admitted
+- **Enforce mode**: `mutateDigest: true`, `verifyDigest: true` -> digest resolved and pinned at admission, pods blocked if verification fails
+
+### Policy Corruption From Patch Operations
+
+During Phase 2, `kubectl patch` attempts left the `require-signature` policy in a broken state where the `attestors` block (for signature verification) was incorrectly nested inside an `attestations` block (for attestation verification). This caused all four policies to fail silently with "unverified image" rather than a specific attestation error.
+
+The lesson: when policies drift from patches, delete and recreate rather than patch further. `kubectl apply -k` on clean YAML files is the correct recovery path.
+
+### Why ArgoCD Over Push-Based CD
+
+ArgoCD's pull-based GitOps model means:
+- The cluster never needs inbound network access from CI
+- Every deployment is reconciled against Git state, manual `kubectl apply` changes are reverted
+- The deployment manifest (with a pinned digest) is the source of truth, what's in Git is what runs
+- CI's job ends at committing the new digest, ArgoCD handles the rest independently
+
+The digest committed by Job 6 (`update-manifest`) is the same digest that was signed, scanned, and attested in Jobs 4-5. ArgoCD deploys that exact digest. Kyverno then verifies that exact digest at admission, the chain is unbroken.
