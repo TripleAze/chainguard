@@ -6,7 +6,7 @@ interface MonthProps {
   highlightToday: boolean;
 }
 
-const Weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const Weekdays = ["Sunday1", "Monday2", "Tuesday3", "Wednesday4", "Thursday5", "Friday6", "Saturday6"];
 
 const Month: React.FC<MonthProps> = ({ date, highlightToday }) => {
   const year = date.getFullYear();
