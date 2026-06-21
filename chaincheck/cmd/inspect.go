@@ -5,10 +5,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/tripleaze/chaincheck/internal/config"
-	"github.com/tripleaze/chaincheck/internal/registry"
-	"github.com/tripleaze/chaincheck/internal/report"
-	"github.com/tripleaze/chaincheck/internal/verify"
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
+	"github.com/TripleAze/chainguard/chaincheck/internal/registry"
+	"github.com/TripleAze/chainguard/chaincheck/internal/report"
+	"github.com/TripleAze/chainguard/chaincheck/internal/verify"
 )
 
 var Version string
@@ -130,7 +130,7 @@ var uninstallCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("✅ Successfully uninstalled chaincheck!")
+		fmt.Println("Successfully uninstalled chaincheck!")
 	},
 }
 

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/sigstore/cosign/v2/pkg/cosign/attestation"
-	"github.com/tripleaze/chaincheck/internal/config"
-	"github.com/tripleaze/chaincheck/internal/report"
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
+	"github.com/TripleAze/chainguard/chaincheck/internal/report"
 )
 
 const (

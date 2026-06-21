@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"github.com/tripleaze/chaincheck/internal/config"
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
 )
 
 type DSSEEnvelope struct {
