@@ -368,3 +368,51 @@ jobs:
           git add deploy/deployment.yml
           git diff --staged --quiet || git commit -m "chore: update image to ${{ needs.build.outputs.digest }}"
           git push
+
+  # ─────────────────────────────────────────────
+  # JOB 7: Post-Deploy Verification
+  # Runs chaincheck against the deployed digest
+  # to confirm the full trust chain is intact.
+  # Fails the pipeline if any check fails.
+  # Only runs on push to main.
+  # ─────────────────────────────────────────────
+  verify-deployment:
+    needs: [build, update-manifest]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Install chaincheck
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh \
+            | sh -s -- -b /usr/local/bin
+          chaincheck --version
+
+      - name: Verify deployed image trust posture
+        run: |
+          DIGEST="${{ needs.build.outputs.digest }}"
+          IMAGE_REF="${{ needs.build.outputs.image-ref }}"
+
+          echo "Running chaincheck against: ${IMAGE_REF}@${DIGEST}"
+
+          chaincheck inspect "${IMAGE_REF}@${DIGEST}" \
+            --cert-identity "https://github.com/${{ github.repository }}/.github/workflows/ci.yml@refs/heads/main" \
+            --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --output json | tee chaincheck-report.json
+
+          # Explicit exit code check
+          PASSED=$(cat chaincheck-report.json | jq -r '.passed')
+          if [ "$PASSED" != "true" ]; then
+            echo "chaincheck FAILED — image did not pass trust verification"
+            exit 1
+          fi
+
+          echo "chaincheck PASSED — image trust chain verified"
+
+      - name: Upload chaincheck report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaincheck-report
+          path: chaincheck-report.json
+          retention-days: 90
