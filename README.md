@@ -8,21 +8,24 @@ chaincheck queries an OCI registry for Cosign signatures, SBOM attestations, vul
 
 ## Installation
 
+### Latest Release
+[![GitHub Release](https://img.shields.io/github/v/release/TripleAze/chainguard?include_prereleases&style=flat-square)](https://github.com/TripleAze/chainguard/releases/latest)
+
 ### Option 1: Install Script (Recommended)
 Works like cosign/grype/syft:
 ```bash
-curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s
+curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/install.sh | bash -s
 ```
 
 Or install to a custom directory:
 ```bash
-curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s -- ~/.local/bin
+curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/install.sh | bash -s -- ~/.local/bin
 ```
 
 ### Option 2: Go Install
 For Go developers:
 ```bash
-go install github.com/TripleAze/chainguard/chaincheck@latest
+go install github.com/TripleAze/chainguard@latest
 ```
 
 ### Option 3: Download Binary
@@ -31,7 +34,7 @@ Download pre-built binaries from the [Releases](https://github.com/TripleAze/cha
 ### Build Locally
 ```bash
 git clone https://github.com/TripleAze/chainguard.git
-cd chainguard/chaincheck
+cd chainguard
 make build
 # Install to /usr/local/bin
 sudo make install
