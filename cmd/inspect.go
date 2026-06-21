@@ -5,10 +5,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/TripleAze/chainguard/chaincheck/internal/config"
-	"github.com/TripleAze/chainguard/chaincheck/internal/registry"
-	"github.com/TripleAze/chainguard/chaincheck/internal/report"
-	"github.com/TripleAze/chainguard/chaincheck/internal/verify"
+	"github.com/TripleAze/chainguard/internal/config"
+	"github.com/TripleAze/chainguard/internal/registry"
+	"github.com/TripleAze/chainguard/internal/report"
+	"github.com/TripleAze/chainguard/internal/verify"
 )
 
 var Version string
