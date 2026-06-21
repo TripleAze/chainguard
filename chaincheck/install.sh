@@ -32,7 +32,17 @@ VERSION=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep 
 URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY}_${OS}_${ARCH}.tar.gz"
 
 echo "Installing chaincheck ${VERSION} for ${OS}/${ARCH}..."
-mkdir -p "$INSTALL_DIR"
-curl -sSfL "$URL" | tar -xz -C "$INSTALL_DIR" "$BINARY"
-chmod +x "$INSTALL_DIR/$BINARY"
+
+# Check if we can write to INSTALL_DIR
+if [ ! -w "$INSTALL_DIR" ]; then
+  echo "Need sudo to install to ${INSTALL_DIR}, requesting privileges..."
+  sudo mkdir -p "$INSTALL_DIR"
+  curl -sSfL "$URL" | sudo tar -xz -C "$INSTALL_DIR" "$BINARY"
+  sudo chmod +x "$INSTALL_DIR/$BINARY"
+else
+  mkdir -p "$INSTALL_DIR"
+  curl -sSfL "$URL" | tar -xz -C "$INSTALL_DIR" "$BINARY"
+  chmod +x "$INSTALL_DIR/$BINARY"
+fi
+
 echo "✅ chaincheck ${VERSION} installed to $INSTALL_DIR/$BINARY"
