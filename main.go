@@ -1,6 +1,6 @@
 package main
 
-import "github.com/TripleAze/chainguard/chaincheck/cmd"
+import "github.com/TripleAze/chainguard/cmd"
 
 var version string
 

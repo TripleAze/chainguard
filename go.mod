@@ -1,4 +1,4 @@
-module github.com/TripleAze/chainguard/chaincheck
+module github.com/TripleAze/chainguard
 
 go 1.25.0
 

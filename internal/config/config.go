@@ -23,7 +23,7 @@ func Default() Config {
 		CertOIDCIssuer: "https://token.actions.githubusercontent.com",
 		Identities: []Identity{
 			{
-				SubjectRegExp: "https://github.com/TripleAze/chainguard/chaincheck/.github/workflows/ci.yml@refs/heads/main",
+				SubjectRegExp: "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main",
 				Issuer:        "https://token.actions.githubusercontent.com",
 			},
 			{
