@@ -33,15 +33,24 @@ URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY}_${OS}_${
 
 echo "Installing chaincheck ${VERSION} for ${OS}/${ARCH}..."
 
+# Create temp directory
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+# Download tarball
+curl -sSfL "$URL" -o "$TMP_DIR/${BINARY}.tar.gz"
+
+# Extract
+tar -xz -f "$TMP_DIR/${BINARY}.tar.gz" -C "$TMP_DIR"
+
 # Check if we can write to INSTALL_DIR
+mkdir -p "$INSTALL_DIR"
 if [ ! -w "$INSTALL_DIR" ]; then
   echo "Need sudo to install to ${INSTALL_DIR}, requesting privileges..."
-  sudo mkdir -p "$INSTALL_DIR"
-  curl -sSfL "$URL" | sudo tar -xz -C "$INSTALL_DIR" "$BINARY"
+  sudo cp "$TMP_DIR/$BINARY" "$INSTALL_DIR/"
   sudo chmod +x "$INSTALL_DIR/$BINARY"
 else
-  mkdir -p "$INSTALL_DIR"
-  curl -sSfL "$URL" | tar -xz -C "$INSTALL_DIR" "$BINARY"
+  cp "$TMP_DIR/$BINARY" "$INSTALL_DIR/"
   chmod +x "$INSTALL_DIR/$BINARY"
 fi
 
