@@ -21,17 +21,20 @@ func VerifySignature(imageRef string, cfg config.Config) (report.CheckResult, er
 		}, err
 	}
 
-	var cosignIdentities []cosign.Identity
-	for _, id := range cfg.Identities {
-		cosignIdentities = append(cosignIdentities, cosign.Identity{
-			SubjectRegExp: id.SubjectRegExp,
-			Issuer:        id.Issuer,
-		})
+	co := &cosign.CheckOpts{
+		IgnoreTlog: cfg.SkipTLog,
 	}
 
-	co := &cosign.CheckOpts{
-		Identities: cosignIdentities,
-		IgnoreTlog: cfg.SkipTLog,
+	// Only enforce identity matching if cert-identity was explicitly set
+	if cfg.CertIdentity != "" {
+		var cosignIdentities []cosign.Identity
+		for _, id := range cfg.Identities {
+			cosignIdentities = append(cosignIdentities, cosign.Identity{
+				SubjectRegExp: id.SubjectRegExp,
+				Issuer:        id.Issuer,
+			})
+		}
+		co.Identities = cosignIdentities
 	}
 
 	// Set up trusted material

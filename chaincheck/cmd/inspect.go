@@ -11,9 +11,18 @@ import (
 	"github.com/tripleaze/chaincheck/internal/verify"
 )
 
+var Version string
+
 var rootCmd = &cobra.Command{
 	Use:   "chaincheck",
 	Short: "Inspect container image supply chain security",
+	Run: func(cmd *cobra.Command, args []string) {
+		if v, _ := cmd.Flags().GetBool("version"); v {
+			fmt.Printf("chaincheck %s\n", Version)
+			return
+		}
+		cmd.Help()
+	},
 }
 
 var inspectCmd = &cobra.Command{
@@ -101,9 +110,10 @@ var inspectCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
 	inspectCmd.Flags().StringP("output", "o", "text", "Output format: 'text' or 'json'")
 	inspectCmd.Flags().Bool("skip-tlog", false, "Skip Rekor transparency log verification")
-	inspectCmd.Flags().String("cert-identity", "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main", "Expected certificate identity regexp")
+	inspectCmd.Flags().String("cert-identity", "", "Expected certificate identity regexp")
 	inspectCmd.Flags().String("cert-oidc-issuer", "https://token.actions.githubusercontent.com", "Expected OIDC issuer")
 	inspectCmd.Flags().String("fail-on", "any", "Minimum check level to fail on: 'any' or 'critical'")
 

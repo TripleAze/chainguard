@@ -19,7 +19,7 @@ func Default() Config {
 	return Config{
 		OutputFormat:   "text",
 		SkipTLog:       false,
-		CertIdentity:   "https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main",
+		CertIdentity:   "",
 		CertOIDCIssuer: "https://token.actions.githubusercontent.com",
 		Identities: []Identity{
 			{

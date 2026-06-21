@@ -3,6 +3,7 @@ package verify
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/tripleaze/chaincheck/internal/config"
 	"github.com/tripleaze/chaincheck/internal/report"
@@ -58,6 +59,12 @@ func VerifyProvenance(imageRef string, cfg config.Config) (report.ProvenanceResu
 	if materials, ok := predMap["materials"].([]interface{}); ok && len(materials) > 0 {
 		if mat, ok := materials[0].(map[string]interface{}); ok {
 			if uri, ok := mat["uri"].(string); ok {
+				// Strip git+ prefix
+				uri = strings.TrimPrefix(uri, "git+")
+				// Strip @refs/... suffix
+				if idx := strings.Index(uri, "@"); idx != -1 {
+					uri = uri[:idx]
+				}
 				sourceRepo = uri
 			}
 			if digest, ok := mat["digest"].(map[string]interface{}); ok {
@@ -66,32 +73,51 @@ func VerifyProvenance(imageRef string, cfg config.Config) (report.ProvenanceResu
 				} else if sha256, ok := digest["sha256"].(string); ok {
 					sourceCommit = sha256
 				}
+				// Truncate commit to 7 chars
+				if len(sourceCommit) > 7 {
+					sourceCommit = sourceCommit[:7]
+				}
 			}
 		}
 	}
 
-	// Get branch/ref from invocation parameters
+	// Get branch/ref from invocation.environment.github_ref first (priority)
 	if invocation, ok := predMap["invocation"].(map[string]interface{}); ok {
-		if params, ok := invocation["parameters"].(map[string]interface{}); ok {
-			if githubRef, ok := params["github_ref"].(string); ok {
+		// First check environment.github_ref
+		if env, ok := invocation["environment"].(map[string]interface{}); ok {
+			if githubRef, ok := env["github_ref"].(string); ok {
 				sourceRef = githubRef
 			}
 		}
 
-		// Get builder ID from invocation
-		if configSource, ok := invocation["configSource"].(map[string]interface{}); ok {
-			if entryPoint, ok := configSource["entryPoint"].(string); ok {
-				// If we don't have a sourceRef yet, use entryPoint as fallback
-				if sourceRef == "" {
+		// Then, ONLY if we still don't have a sourceRef, check configSource.entryPoint as fallback
+		if sourceRef == "" {
+			if configSource, ok := invocation["configSource"].(map[string]interface{}); ok {
+				if entryPoint, ok := configSource["entryPoint"].(string); ok {
 					sourceRef = entryPoint
 				}
 			}
 		}
+	}
 
-		if builder, ok := predMap["builder"].(map[string]interface{}); ok {
-			if id, ok := builder["id"].(string); ok {
-				builderID = id
+	// Fallback to externalParameters.workflow.ref if still not found
+	if sourceRef == "" {
+		if externalParams, ok := predMap["externalParameters"].(map[string]interface{}); ok {
+			if workflow, ok := externalParams["workflow"].(map[string]interface{}); ok {
+				if ref, ok := workflow["ref"].(string); ok {
+					sourceRef = ref
+				}
 			}
+		}
+	}
+
+	// Strip refs/heads/ or refs/tags/ prefix from sourceRef
+	sourceRef = strings.TrimPrefix(sourceRef, "refs/heads/")
+	sourceRef = strings.TrimPrefix(sourceRef, "refs/tags/")
+
+	if builder, ok := predMap["builder"].(map[string]interface{}); ok {
+		if id, ok := builder["id"].(string); ok {
+			builderID = id
 		}
 	}
 

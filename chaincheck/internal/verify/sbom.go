@@ -3,6 +3,7 @@ package verify
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/tripleaze/chaincheck/internal/config"
 	"github.com/tripleaze/chaincheck/internal/report"
@@ -54,11 +55,22 @@ func VerifySBOM(imageRef string, cfg config.Config) (report.SBOMResult, error) {
 	}
 
 	if spdxVersionVal, ok := predicate["spdxVersion"].(string); ok {
-		spdxVersion = spdxVersionVal
+		// Strip SPDX- prefix
+		spdxVersion = strings.TrimPrefix(spdxVersionVal, "SPDX-")
 	}
 
 	if packages, ok := predicate["packages"].([]interface{}); ok {
-		packageCount = len(packages)
+		for _, pkg := range packages {
+			pkgMap, ok := pkg.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			// Skip packages that are the container itself
+			if primaryPurpose, ok := pkgMap["primaryPackagePurpose"].(string); ok && primaryPurpose == "CONTAINER" {
+				continue
+			}
+			packageCount++
+		}
 	}
 
 	return report.SBOMResult{
