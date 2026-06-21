@@ -1,96 +1,132 @@
-# chaincheck
+# ChainGuard
 
-A command-line tool that inspects the supply chain security posture of container images in one command.
+A supply chain security enforcement toolkit for container-based workflows implementing SBOM generation, vulnerability scanning, keyless image signing, SLSA provenance, and Kubernetes admission control, all enforced end to end with zero stored secrets.
 
-## What it does
+## What This Is
 
-chaincheck queries an OCI registry for Cosign signatures, SBOM attestations, vulnerability scan attestations, and SLSA provenance, then produces a human-readable trust report with a pass/fail exit code.
+Every container image that comes out of this pipeline carries cryptographic evidence answering four questions:
 
-## Installation
+1. **What's inside it?**  a full Software Bill of Materials (SBOM)
+2. **Is it safe?**  scanned against the live CVE database, gated on criticals, with a documented exception policy
+3. **Did it come from us?**  signed using keyless OIDC-based signing (no stored private keys)
+4. **How was it built?**  SLSA Level 2 provenance recording the exact commit, workflow, and builder
 
-### Option 1: Install Script (Recommended)
-Works like cosign/grype/syft:
+And at deploy time, **Kyverno admission control enforces all four** nothing runs in the cluster unless it can prove all of the above.
+
+## Architecture
+
+```
+Developer pushes code
+        │
+        ▼
+┌───────────────────────────────────────────────────────┐
+│                   GitHub Actions CI                    │
+│                                                        │
+│  build ──▶ generate-sbom ──▶ scan-sbom                │
+│                                   │                   │
+│                              CVE gate                  │
+│                           (fail on critical)           │
+│                                   │                   │
+│                                   ▼                   │
+│                          sign-and-attest               │
+│                         ┌──────────────┐              │
+│                         │ cosign sign  │ → .sig       │
+│                         │ attest SBOM  │ → .att       │
+│                         │ attest vuln  │ → .att       │
+│                         │ attest prov  │ → OCI ref    │
+│                         └──────────────┘              │
+│                                   │                   │
+│                            provenance                  │
+│                         (SLSA generator)               │
+│                                   │                   │
+│                          update-manifest               │
+│                      (pins digest in Git)              │
+└───────────────────────────────────────────────────────┘
+        │
+        ▼ Git commit to deploy/deployment.yml
+┌───────────────────────────────────────────────────────┐
+│                       ArgoCD                           │
+│                                                        │
+│  Watches deploy/ directory                             │
+│  Detects digest change → syncs EKS cluster            │
+│  Self-healing: reverts manual cluster changes          │
+│  Every deployment traceable to a Git commit            │
+└───────────────────────────────────────────────────────┘
+        │
+        ▼ pod admission
+┌───────────────────────────────────────────────────────┐
+│              Kyverno Admission Control (EKS)           │
+│                                                        │
+│  require-signature     → Enforce                       │
+│  require-provenance    → Enforce                       │
+│  require-sbom          → Enforce                       │
+│  block-critical-cves   → Enforce                       │
+│                                                        │
+│  Unsigned or unattested images → BLOCKED               │
+└───────────────────────────────────────────────────────┘
+```
+
+## What Gets Produced Per Build
+
+| Artifact | Format | Location |
+|---|---|---|
+| Container image | OCI, linux/amd64 | GHCR, tagged `main` / `sha-<commit>` |
+| SBOM | SPDX JSON | Workflow artifact + OCI `.att` attestation |
+| CVE scan results | SARIF | GitHub Security tab (Code Scanning) |
+| Vuln attestation | cosign vuln predicate | OCI `.att` attestation |
+| Image signature | Cosign keyless | OCI `.sig` tag |
+| SLSA provenance | SLSA v0.2 | OCI referrers API |
+| Deployment manifest | Kubernetes YAML | `deploy/deployment.yml` (digest-pinned) |
+
+## Verifying an Image
+
 ```bash
-curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s
+# View the full supply chain artifact tree
+cosign tree ghcr.io/tripleaze/chainguard@sha256:<digest>
+
+# Verify the Cosign signature
+cosign verify \
+  --certificate-identity-regexp="https://github.com/TripleAze/chainguard" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/tripleaze/chainguard@sha256:<digest>
+
+# Verify SLSA provenance via GitHub CLI
+gh attestation verify oci://ghcr.io/tripleaze/chainguard@sha256:<digest> -o tripleaze
+
+# Extract the SBOM
+cosign download attestation ghcr.io/tripleaze/chainguard@sha256:<digest> \
+  | jq -r '.payload' | base64 -d \
+  | jq 'select(.predicateType == "https://spdx.dev/Document") | .predicate'
+
+# Extract the vuln attestation summary
+cosign download attestation ghcr.io/tripleaze/chainguard@sha256:<digest> \
+  | jq -r '.payload' | base64 -d \
+  | jq 'select(.predicateType == "cosign.sigstore.dev/attestation/vuln/v1")
+        | .predicate.scanner | {version, db, findings: (.result | length)}'
 ```
 
-Or install to a custom directory:
-```bash
-curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s -- ~/.local/bin
-```
+## CVE Exception Policy
 
-### Option 2: Go Install
-For Go developers:
-```bash
-go install github.com/TripleAze/chainguard/chaincheck@latest
-```
+CVEs with no available fix are documented in [`.grype.yaml`](.grype.yaml), each with a specific CVE identifier, a written justification and mitigation, and an expiry date forcing periodic re-evaluation. No blanket ignores are permitted.
 
-### Option 3: Download Binary
-Download pre-built binaries from the [Releases](https://github.com/TripleAze/chainguard/releases) page.
+The pipeline gate fails on any critical CVE that has an available fix and is not explicitly documented. High/medium findings are surfaced via SARIF for visibility without blocking.
 
-### Build Locally
-```bash
-git clone https://github.com/TripleAze/chainguard.git
-cd chainguard/chaincheck
-make build
-# Install to /usr/local/bin
-sudo make install
-```
-
-## Usage
+## Repo Structure
 
 ```
-chaincheck inspect <image> [flags]
+chainguard/
+├── .github/workflows/ci.yml       # 6-job CI pipeline
+├── razz-bug-calenderapp/          # Sample app (nginx SPA, multi-stage Dockerfile)
+├── deploy/deployment.yml          # Digest-pinned manifest, managed by CI + ArgoCD
+├── argocd/application.yaml        # ArgoCD Application manifest
+├── policy/kyverno/                # Kyverno ClusterPolicies (all in Enforce)
+├── .grype.yaml                    # CVE exception policy with documented ignores
+└── docs/architecture.md           # Design rationale and decisions
 ```
 
-### Flags
+## Roadmap
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--version, -v` | `false` | Print version information |
-| `--output, -o` | `text` | Output format: `text` or `json` |
-| `--skip-tlog` | `false` | Skip Rekor transparency log verification |
-| `--cert-identity` | `""` | Expected certificate identity regexp (only enforced if set) |
-| `--cert-oidc-issuer` | `"https://token.actions.githubusercontent.com"` | Expected OIDC issuer |
-| `--fail-on` | `"any"` | Minimum check level to fail on: `"any"` or `"critical"` |
-
-### Examples
-
-Inspect by digest (preferred):
-```bash
-chaincheck inspect ghcr.io/tripleaze/chainguard@sha256:a1c2fd91bd8650ba6dc10889ad61e8170cd3e47470ccf615bc72a7a2dc38164e
-```
-
-Inspect by tag (resolves to digest first):
-```bash
-chaincheck inspect ghcr.io/tripleaze/chainguard:main
-```
-
-JSON output for scripting:
-```bash
-chaincheck inspect ghcr.io/tripleaze/chainguard:main --output json
-```
-
-Custom identity:
-```bash
-chaincheck inspect ghcr.io/myorg/myapp:v1.2.3 \
-  --cert-identity "https://github.com/myorg/myapp/.github/workflows/ci.yml@refs/heads/main"
-```
-
-## Demo
-
-Run the demo against the chaincheck sample image:
-```bash
-make demo
-```
-
-## What is checked?
-
-- **Cosign Signature**: Validates that the image was signed by the expected identity
-- **SBOM**: Validates the presence of a signed SPDX SBOM attestation
-- **Vulnerability Scan**: Validates the presence of a signed vulnerability scan attestation with no critical CVEs
-- **SLSA Provenance**: Validates the presence of SLSA Level 2 provenance
-
-## License
-
-MIT
+- [x] **Phase 1** — CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
+- [x] **Phase 2** — GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
+- [ ] **Phase 3** — `chaincheck` CLI: one-command trust inspection for any image
+- [ ] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail
