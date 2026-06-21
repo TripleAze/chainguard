@@ -21,3 +21,14 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Go binaries
+chaincheck/chaincheck
+chaincheck/chaincheck.exe
+*.exe
+*.out
+*.test
+
+# Node modules (razz-bug-calenderapp)
+razz-bug-calenderapp/node_modules/
+razz-bug-calenderapp/dist/
