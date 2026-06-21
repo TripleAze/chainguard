@@ -109,6 +109,31 @@ var inspectCmd = &cobra.Command{
 	},
 }
 
+var uninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Uninstall chaincheck from your system",
+	Run: func(cmd *cobra.Command, args []string) {
+		// Find the executable path
+		exePath, err := os.Executable()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding chaincheck executable: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Uninstalling chaincheck from %s...\n", exePath)
+
+		// Try to remove it
+		err = os.Remove(exePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error uninstalling chaincheck: %v\n", err)
+			fmt.Fprintln(os.Stderr, "You might need to run this command with sudo.")
+			os.Exit(1)
+		}
+
+		fmt.Println("✅ Successfully uninstalled chaincheck!")
+	},
+}
+
 func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
 	inspectCmd.Flags().StringP("output", "o", "text", "Output format: 'text' or 'json'")
@@ -118,6 +143,7 @@ func init() {
 	inspectCmd.Flags().String("fail-on", "any", "Minimum check level to fail on: 'any' or 'critical'")
 
 	rootCmd.AddCommand(inspectCmd)
+	rootCmd.AddCommand(uninstallCmd)
 }
 
 func Execute() {
