@@ -8,15 +8,33 @@ chaincheck queries an OCI registry for Cosign signatures, SBOM attestations, vul
 
 ## Installation
 
+### Option 1: Install Script (Recommended)
+Works like cosign/grype/syft:
+```bash
+curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s
+```
+
+Or install to a custom directory:
+```bash
+curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | bash -s -- ~/.local/bin
+```
+
+### Option 2: Go Install
+For Go developers:
+```bash
+go install github.com/TripleAze/chainguard/chaincheck@latest
+```
+
+### Option 3: Download Binary
+Download pre-built binaries from the [Releases](https://github.com/TripleAze/chainguard/releases) page.
+
+### Build Locally
 ```bash
 git clone https://github.com/TripleAze/chainguard.git
 cd chainguard/chaincheck
-go install
-```
-
-Or build locally:
-```bash
 make build
+# Install to /usr/local/bin
+sudo make install
 ```
 
 ## Usage
@@ -29,9 +47,10 @@ chaincheck inspect <image> [flags]
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--version, -v` | `false` | Print version information |
 | `--output, -o` | `text` | Output format: `text` or `json` |
 | `--skip-tlog` | `false` | Skip Rekor transparency log verification |
-| `--cert-identity` | `"https://github.com/TripleAze/chainguard/.github/workflows/ci.yml@refs/heads/main"` | Expected certificate identity regexp |
+| `--cert-identity` | `""` | Expected certificate identity regexp (only enforced if set) |
 | `--cert-oidc-issuer` | `"https://token.actions.githubusercontent.com"` | Expected OIDC issuer |
 | `--fail-on` | `"any"` | Minimum check level to fail on: `"any"` or `"critical"` |
 
