@@ -3,7 +3,24 @@ set -e
 
 REPO="TripleAze/chainguard"
 BINARY="chaincheck"
-INSTALL_DIR="${1:-/usr/local/bin}"
+INSTALL_DIR="/usr/local/bin"
+
+usage() {
+  echo "Usage: $0 [-b <install-dir>]"
+  echo "  -b <install-dir>  Directory to install ${BINARY} (default: /usr/local/bin)"
+  exit 1
+}
+
+while getopts "b:" opt; do
+  case $opt in
+    b)
+      INSTALL_DIR="$OPTARG"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -15,6 +32,7 @@ VERSION=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep 
 URL="https://github.com/${REPO}/releases/download/v${VERSION}/${BINARY}_${OS}_${ARCH}.tar.gz"
 
 echo "Installing chaincheck ${VERSION} for ${OS}/${ARCH}..."
+mkdir -p "$INSTALL_DIR"
 curl -sSfL "$URL" | tar -xz -C "$INSTALL_DIR" "$BINARY"
 chmod +x "$INSTALL_DIR/$BINARY"
 echo "✅ chaincheck ${VERSION} installed to $INSTALL_DIR/$BINARY"
