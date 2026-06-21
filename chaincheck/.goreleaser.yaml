@@ -36,6 +36,8 @@ release:
   github:
     owner: TripleAze
     name: chainguard
+  replace_existing_artifacts: true
+  replace_existing_draft: true
 
 changelog:
   sort: asc
