@@ -54,4 +54,4 @@ else
   chmod +x "$INSTALL_DIR/$BINARY"
 fi
 
-echo "✅ chaincheck ${VERSION} installed to $INSTALL_DIR/$BINARY"
+echo "chaincheck ${VERSION} installed to $INSTALL_DIR/$BINARY"
