@@ -384,7 +384,7 @@ jobs:
     steps:
       - name: Install chaincheck
         run: |
-          curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/install.sh \
+          curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh \
             | sh -s -- -b /usr/local/bin
           chaincheck --version
 
