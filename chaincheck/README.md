@@ -224,8 +224,8 @@ make release-dry-run  # test GoReleaser config locally
 Releases are automated via GoReleaser. To cut a new release:
 
 ```bash
-git tag chaincheck/v1.1.0
-git push origin chaincheck/v1.1.0
+git tag v1.1.2
+git push origin v1.1.2
 ```
 
 GitHub Actions builds and publishes binaries for:
