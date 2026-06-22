@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/TripleAze/chainguard/chaincheck/internal/config"
 	"github.com/TripleAze/chainguard/chaincheck/internal/report"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 )
 
 func VerifySignature(imageRef string, cfg config.Config) (report.CheckResult, error) {
@@ -21,17 +21,26 @@ func VerifySignature(imageRef string, cfg config.Config) (report.CheckResult, er
 		}, err
 	}
 
-	var cosignIdentities []cosign.Identity
-	for _, id := range cfg.Identities {
-		cosignIdentities = append(cosignIdentities, cosign.Identity{
-			SubjectRegExp: id.SubjectRegExp,
-			Issuer:        id.Issuer,
-		})
-	}
-
 	co := &cosign.CheckOpts{
 		IgnoreTlog: cfg.SkipTLog,
-		Identities: cosignIdentities,
+	}
+
+	// Use identities: if CertIdentity is set, use that, otherwise use cfg.Identities
+	var cosignIdentities []cosign.Identity
+	if cfg.CertIdentity != "" {
+		cosignIdentities = append(cosignIdentities, cosign.Identity{
+			SubjectRegExp: cfg.CertIdentity,
+			Issuer:        cfg.CertOIDCIssuer,
+		})
+		co.Identities = cosignIdentities
+	} else {
+		for _, id := range cfg.Identities {
+			cosignIdentities = append(cosignIdentities, cosign.Identity{
+				SubjectRegExp: id.SubjectRegExp,
+				Issuer:        id.Issuer,
+			})
+		}
+		co.Identities = cosignIdentities
 	}
 
 	// Set up trusted material
