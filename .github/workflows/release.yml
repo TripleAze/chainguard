@@ -3,7 +3,7 @@ name: Release chaincheck
 on:
   push:
     tags:
-      - 'chaincheck/v*'
+      - 'v*'
 
 permissions:
   contents: write
