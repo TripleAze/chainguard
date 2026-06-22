@@ -1,8 +1,7 @@
 version: 2
 project_name: chaincheck
 
-git:
-  tag_prefix: chaincheck/v
+
 
 before:
   hooks:
