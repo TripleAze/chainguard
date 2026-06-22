@@ -3,7 +3,7 @@ name: Release chaincheck
 on:
   push:
     tags:
-      - 'v*'
+      - 'chaincheck/v*'
 
 permissions:
   contents: write
@@ -24,5 +24,6 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           args: release --clean
+          workdir: chaincheck
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
