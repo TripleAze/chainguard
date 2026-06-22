@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/TripleAze/chainguard/internal/config"
-	"github.com/TripleAze/chainguard/internal/registry"
-	"github.com/TripleAze/chainguard/internal/report"
-	"github.com/TripleAze/chainguard/internal/verify"
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
+	"github.com/TripleAze/chainguard/chaincheck/internal/registry"
+	"github.com/TripleAze/chainguard/chaincheck/internal/report"
+	"github.com/TripleAze/chainguard/chaincheck/internal/verify"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -188,7 +188,7 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 	green.Printf("  ✔  chaincheck removed from %s\n", realPath)
 	fmt.Println()
 	fmt.Println("  To reinstall:")
-	cyan.Printf("  curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/install.sh | sh\n")
+	cyan.Printf("  curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | sh\n")
 	fmt.Println()
 
 	return nil

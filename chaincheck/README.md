@@ -61,7 +61,7 @@ curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chainchec
 ### Option 2 — Go install
 
 ```bash
-go install github.com/tripleaze/chaincheck@latest
+go install github.com/TripleAze/chainguard/chaincheck/cmd/chaincheck@latest
 ```
 
 ### Option 3 — From source

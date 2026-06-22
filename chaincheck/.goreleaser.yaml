@@ -1,6 +1,8 @@
 version: 2
-
 project_name: chaincheck
+
+git:
+  tag_prefix: chaincheck/v
 
 before:
   hooks:
@@ -20,7 +22,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/TripleAze/chainguard/cmd.Version={{.Version}}
+      - -X github.com/TripleAze/chainguard/chaincheck/cmd.Version={{.Version}}
 
 archives:
   - format: tar.gz

@@ -138,7 +138,7 @@ After Phase 1 and Phase 2, verifying an image's trust posture required running 4
 
 The initial implementation used `cosign` as a subprocess (shell out, parse stdout). This was replaced with the Cosign Go SDK (`github.com/sigstore/cosign/v2`) for three reasons: no dependency on the cosign binary being installed, faster execution (no subprocess overhead), and structured access to certificate fields without text parsing.
 
-The key SDK pattern: `cosign.VerifyImageAttestations` returns all verified attestations in a slice. The caller is responsible for filtering by `predicateType` after verification — the SDK does not filter for you. This is a common source of confusion.
+The key SDK pattern: `cosign.VerifyImageAttestations` returns all verified attestations in a slice. The caller is responsible for filtering by `predicateType` after verification, the SDK does not filter for you. This is a common source of confusion.
 
 ### Predicate Type Discovery
 
@@ -163,7 +163,7 @@ The vuln attestation predicate is custom-built in CI via `jq` transformation of 
 
 **Enforcement mode** (`--cert-identity` provided): additionally checks that the certificate SAN matches the expected identity regexp. Fails if the signer doesn't match. Used in CI to verify that your specific pipeline signed the image.
 
-This design makes `chaincheck` reusable across organisations — teams use discovery mode to inspect unfamiliar images and enforcement mode to verify their own.
+This design makes `chaincheck` reusable across organisations, teams use discovery mode to inspect unfamiliar images and enforcement mode to verify their own.
 
 ### Distribution
 

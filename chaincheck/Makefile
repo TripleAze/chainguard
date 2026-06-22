@@ -1,6 +1,6 @@
 BINARY      := chaincheck
 VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS     := -ldflags "-X github.com/TripleAze/chainguard/cmd.Version=$(VERSION) -s -w"
+LDFLAGS     := -ldflags "-X github.com/TripleAze/chainguard/chaincheck/cmd.Version=$(VERSION) -s -w"
 INSTALL_DIR := /usr/local/bin
 
 .PHONY: build install uninstall test lint clean demo release-dry-run help

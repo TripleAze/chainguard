@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TripleAze/chainguard/internal/config"
-	"github.com/TripleAze/chainguard/internal/report"
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
+	"github.com/TripleAze/chainguard/chaincheck/internal/report"
 )
 
 const (
