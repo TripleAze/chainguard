@@ -25,23 +25,21 @@ func VerifySignature(imageRef string, cfg config.Config) (report.CheckResult, er
 		IgnoreTlog: cfg.SkipTLog,
 	}
 
-	// Use identities: if CertIdentity is set, use that, otherwise use cfg.Identities
+	// Use identities: if CertIdentity is set, include it along with all cfg.Identities
 	var cosignIdentities []cosign.Identity
 	if cfg.CertIdentity != "" {
 		cosignIdentities = append(cosignIdentities, cosign.Identity{
 			SubjectRegExp: cfg.CertIdentity,
 			Issuer:        cfg.CertOIDCIssuer,
 		})
-		co.Identities = cosignIdentities
-	} else {
-		for _, id := range cfg.Identities {
-			cosignIdentities = append(cosignIdentities, cosign.Identity{
-				SubjectRegExp: id.SubjectRegExp,
-				Issuer:        id.Issuer,
-			})
-		}
-		co.Identities = cosignIdentities
 	}
+	for _, id := range cfg.Identities {
+		cosignIdentities = append(cosignIdentities, cosign.Identity{
+			SubjectRegExp: id.SubjectRegExp,
+			Issuer:        id.Issuer,
+		})
+	}
+	co.Identities = cosignIdentities
 
 	// Set up trusted material
 	co.TrustedMaterial, err = cosign.TrustedRoot()

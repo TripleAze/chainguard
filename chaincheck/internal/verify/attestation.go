@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	"github.com/TripleAze/chainguard/chaincheck/internal/config"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"github.com/TripleAze/chainguard/chaincheck/internal/config"
 )
 
 type DSSEEnvelope struct {
@@ -29,11 +29,26 @@ func verifyAttestation(imageRef string, cfg config.Config) ([]AttestationStateme
 	}
 
 	var cosignIdentities []cosign.Identity
-	for _, id := range cfg.Identities {
+	if cfg.CertIdentity != "" {
+		// If CertIdentity is set, add it to the identities, along with all cfg.Identities?
+		// Wait, let's add CertIdentity first, then all cfg.Identities
 		cosignIdentities = append(cosignIdentities, cosign.Identity{
-			SubjectRegExp: id.SubjectRegExp,
-			Issuer:        id.Issuer,
+			SubjectRegExp: cfg.CertIdentity,
+			Issuer:        cfg.CertOIDCIssuer,
 		})
+		for _, id := range cfg.Identities {
+			cosignIdentities = append(cosignIdentities, cosign.Identity{
+				SubjectRegExp: id.SubjectRegExp,
+				Issuer:        id.Issuer,
+			})
+		}
+	} else {
+		for _, id := range cfg.Identities {
+			cosignIdentities = append(cosignIdentities, cosign.Identity{
+				SubjectRegExp: id.SubjectRegExp,
+				Issuer:        id.Issuer,
+			})
+		}
 	}
 
 	co := &cosign.CheckOpts{
