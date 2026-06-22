@@ -368,9 +368,9 @@ jobs:
           git add deploy/deployment.yml
           git diff --staged --quiet || git commit -m "chore: update image to ${{ needs.build.outputs.digest }}"
           
-          # Fetch latest remote changes and rebase to avoid conflicts
+          # Fetch latest remote changes and rebase, automatically resolve conflicts with our changes
           git fetch origin main
-          git rebase origin/main || {
+          git rebase -X theirs origin/main || {
             echo "Rebase failed — aborting"
             git rebase --abort
             exit 1
