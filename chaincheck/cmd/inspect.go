@@ -64,6 +64,16 @@ var inspectCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// If cert-identity was explicitly set, replace the identities list with it
+		if cfg.CertIdentity != "" {
+			cfg.Identities = []config.Identity{
+				{
+					SubjectRegExp: cfg.CertIdentity,
+					Issuer:        cfg.CertOIDCIssuer,
+				},
+			}
+		}
+
 		resolvedRef, err := registry.ResolveToDigest(cfg.ImageRef)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error resolving image: %v\n", err)
