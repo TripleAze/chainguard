@@ -3,12 +3,16 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 
-	"github.com/spf13/cobra"
 	"github.com/TripleAze/chainguard/internal/config"
 	"github.com/TripleAze/chainguard/internal/registry"
 	"github.com/TripleAze/chainguard/internal/report"
 	"github.com/TripleAze/chainguard/internal/verify"
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 )
 
 var Version string
@@ -111,27 +115,83 @@ var inspectCmd = &cobra.Command{
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall chaincheck from your system",
-	Run: func(cmd *cobra.Command, args []string) {
-		// Find the executable path
-		exePath, err := os.Executable()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error finding chaincheck executable: %v\n", err)
-			os.Exit(1)
+	Short: "Remove chaincheck from your system",
+	Long:  `Removes the chaincheck binary from the directory it was installed to.`,
+	RunE:  runUninstall,
+}
+
+func runUninstall(cmd *cobra.Command, args []string) error {
+	// Find where chaincheck is installed
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("could not determine install location: %w", err)
+	}
+
+	// Resolve symlinks
+	realPath, err := filepath.EvalSymlinks(execPath)
+	if err != nil {
+		realPath = execPath
+	}
+
+	bold := color.New(color.Bold)
+	cyan := color.New(color.FgCyan)
+	green := color.New(color.FgGreen)
+	yellow := color.New(color.FgYellow)
+	red := color.New(color.FgRed)
+
+	fmt.Println()
+	bold.Println("  ChainGuard · chaincheck uninstaller")
+	fmt.Println()
+	cyan.Printf("  →  Installed at: %s\n", realPath)
+	fmt.Println()
+
+	// Confirm
+	fmt.Print("  Remove chaincheck? [y/N] ")
+	var response string
+	fmt.Scanln(&response)
+
+	if response != "y" && response != "Y" {
+		yellow.Println("\n  →  Uninstall cancelled.")
+		fmt.Println()
+		return nil
+	}
+
+	fmt.Println()
+
+	// Try to remove directly first
+	err = os.Remove(realPath)
+	if err != nil {
+		if os.IsPermission(err) {
+			// Need elevated privileges
+			yellow.Println("  !  Requires elevated privileges — requesting sudo...")
+			fmt.Println()
+
+			if runtime.GOOS == "windows" {
+				return fmt.Errorf("permission denied — please delete %s manually", realPath)
+			}
+
+			sudoCmd := exec.Command("sudo", "rm", "-f", realPath)
+			sudoCmd.Stdout = os.Stdout
+			sudoCmd.Stderr = os.Stderr
+			sudoCmd.Stdin = os.Stdin
+
+			if err := sudoCmd.Run(); err != nil {
+				red.Printf("  ✘  Failed to remove %s\n", realPath)
+				fmt.Println()
+				return fmt.Errorf("uninstall failed: %w", err)
+			}
+		} else {
+			return fmt.Errorf("failed to remove %s: %w", realPath, err)
 		}
+	}
 
-		fmt.Printf("Uninstalling chaincheck from %s...\n", exePath)
+	green.Printf("  ✔  chaincheck removed from %s\n", realPath)
+	fmt.Println()
+	fmt.Println("  To reinstall:")
+	cyan.Printf("  curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/install.sh | sh\n")
+	fmt.Println()
 
-		// Try to remove it
-		err = os.Remove(exePath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error uninstalling chaincheck: %v\n", err)
-			fmt.Fprintln(os.Stderr, "You might need to run this command with sudo.")
-			os.Exit(1)
-		}
-
-		fmt.Println("Successfully uninstalled chaincheck!")
-	},
+	return nil
 }
 
 func init() {
