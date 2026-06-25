@@ -21,8 +21,6 @@ kind: PersistentVolumeClaim
 metadata:
   name: dashboard-db-pvc
   namespace: chainguard-app
-  annotations:
-    volume.beta.kubernetes.io/storage-provisioner: kubernetes.io/aws-ebs
 spec:
   accessModes:
     - ReadWriteOnce
@@ -101,7 +99,8 @@ spec:
           periodSeconds: 5
       volumes:
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: dashboard-db-pvc
 
 ---
 apiVersion: v1
