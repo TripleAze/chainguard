@@ -35,7 +35,6 @@ spec:
     spec:
       containers:
       - name: backend
-        # Replace with your actual image repository/tag
         image: dashboard-backend:latest
         ports:
         - containerPort: 8080

@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-  - host: "your-dashboard-domain.com"  # Replace with your actual domain
+  - host: "my-dashboard-domain.com"  # Replace with your actual domain
     http:
       paths:
       - path: /api

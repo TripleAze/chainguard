@@ -22,7 +22,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        # Replace with your actual image repository/tag
         image: dashboard-frontend:latest
         ports:
         - containerPort: 3000
