@@ -6,6 +6,11 @@ metadata:
 data:
   PORT: "8080"
   GITHUB_CALLBACK_URL: "http://localhost:8080/api/auth/callback"
+spec:
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
 ---
 apiVersion: v1
 kind: Secret
@@ -16,10 +21,15 @@ type: Opaque
 stringData:
   DATABASE_URL: "postgresql://chainguard:gLTjDbdo5QrgtekfwFpYPgseUYDrCcKnFuPi5oGJ34k=@dashboard-db:5432/chainguard"
   DASHBOARD_INGEST_KEY: "test-ingest-key-12345"
-  GITHUB_CLIENT_ID: "Ov23liC1PBAz1UYaHnQJ"  
-  GITHUB_CLIENT_SECRET: "ca4f81f9e85804f6cf5e1aaa724fe55c944f4839"  
+  GITHUB_CLIENT_ID: "Ov23liC1PBAz1UYaHnQJ"
+  GITHUB_CLIENT_SECRET: "ca4f81f9e85804f6cf5e1aaa724fe55c944f4839"
   SESSION_KEY: "n8BOd1tHhhgqRALJ+F1CCqje9K50npSzgRlOxBG2hhk="
-  GITHUB_ALLOWED_USERS: "TripleAze" 
+  GITHUB_ALLOWED_USERS: "TripleAze"
+spec:
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,84 +47,84 @@ spec:
         app: dashboard-backend
     spec:
       initContainers:
-      - name: create-migrations-dir
-        image: alpine:latest
-        command: ["mkdir", "-p", "/db/migrations"]
-        volumeMounts:
-        - name: migrations
-          mountPath: /db
+        - name: create-migrations-dir
+          image: alpine:latest
+          command: ["mkdir", "-p", "/db/migrations"]
+          volumeMounts:
+            - name: migrations
+              mountPath: /db
       containers:
-      - name: backend
-        image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
-        ports:
-        - containerPort: 8080
-          name: http
-        env:
-        - name: PORT
-          valueFrom:
-            configMapKeyRef:
-              name: dashboard-backend-config
-              key: PORT
-        - name: GITHUB_CALLBACK_URL
-          valueFrom:
-            configMapKeyRef:
-              name: dashboard-backend-config
-              key: GITHUB_CALLBACK_URL
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: DATABASE_URL
-        - name: DASHBOARD_INGEST_KEY
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: DASHBOARD_INGEST_KEY
-        - name: GITHUB_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: GITHUB_CLIENT_ID
-        - name: GITHUB_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: GITHUB_CLIENT_SECRET
-        - name: SESSION_KEY
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: SESSION_KEY
-        - name: GITHUB_ALLOWED_USERS
-          valueFrom:
-            secretKeyRef:
-              name: dashboard-backend-secret
-              key: GITHUB_ALLOWED_USERS
-        resources:
-          limits:
-            cpu: 500m
-            memory: 256Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        volumeMounts:
-        - name: migrations
-          mountPath: /db
+        - name: backend
+          image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: dashboard-backend-config
+                  key: PORT
+            - name: GITHUB_CALLBACK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: dashboard-backend-config
+                  key: GITHUB_CALLBACK_URL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: DATABASE_URL
+            - name: DASHBOARD_INGEST_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: DASHBOARD_INGEST_KEY
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: GITHUB_CLIENT_ID
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: GITHUB_CLIENT_SECRET
+            - name: SESSION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: SESSION_KEY
+            - name: GITHUB_ALLOWED_USERS
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-backend-secret
+                  key: GITHUB_ALLOWED_USERS
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: migrations
+              mountPath: /db
       volumes:
-      - name: migrations
-        emptyDir: {}
+        - name: migrations
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -125,6 +135,10 @@ spec:
   selector:
     app: dashboard-backend
   ports:
-  - port: 8080
-    targetPort: http
+    - port: 8080
+      targetPort: http
   type: ClusterIP
+  template:
+    spec:
+      containers:
+        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
