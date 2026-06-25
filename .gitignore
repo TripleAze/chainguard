@@ -32,3 +32,7 @@ chaincheck/chaincheck.exe
 # Node modules (razz-bug-calenderapp)
 razz-bug-calenderapp/node_modules/
 razz-bug-calenderapp/dist/
+
+# Dashboard backend .env
+dashboard/backend/.env
+
