@@ -35,8 +35,7 @@ spec:
     spec:
       containers:
       - name: backend
-        # Replace with your actual image repository/tag
-        image: dashboard-backend:latest
+        image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
         ports:
         - containerPort: 8080
           name: http

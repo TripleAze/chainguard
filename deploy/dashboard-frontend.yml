@@ -22,8 +22,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        # Replace with your actual image repository/tag
-        image: dashboard-frontend:latest
+        image: ghcr.io/tripleaze/chainguard-dashboard-frontend:main
         ports:
         - containerPort: 3000
           name: http
