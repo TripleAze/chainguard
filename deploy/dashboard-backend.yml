@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: dashboard-backend-config
+  namespace: chainguard-app
 data:
   PORT: "8080"
   GITHUB_CALLBACK_URL: "http://localhost:8080/api/auth/callback"
@@ -10,19 +11,21 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: dashboard-backend-secret
+  namespace: chainguard-app
 type: Opaque
 stringData:
-  DATABASE_URL: "postgresql://chainguard:chainguard@dashboard-db:5432/chainguard"
+  DATABASE_URL: "postgresql://chainguard:gLTjDbdo5QrgtekfwFpYPgseUYDrCcKnFuPi5oGJ34k=@dashboard-db:5432/chainguard"
   DASHBOARD_INGEST_KEY: "test-ingest-key-12345"
-  GITHUB_CLIENT_ID: ""  # Replace with your client ID
-  GITHUB_CLIENT_SECRET: ""  # Replace with your client secret
-  SESSION_KEY: "your-super-secret-session-key-change-in-production"
+  GITHUB_CLIENT_ID: "Ov23liC1PBAz1UYaHnQJ"  
+  GITHUB_CLIENT_SECRET: "ca4f81f9e85804f6cf5e1aaa724fe55c944f4839"  
+  SESSION_KEY: "n8BOd1tHhhgqRALJ+F1CCqje9K50npSzgRlOxBG2hhk="
   GITHUB_ALLOWED_USERS: "TripleAze" 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dashboard-backend
+  namespace: chainguard-app
 spec:
   replicas: 2
   selector:
@@ -33,6 +36,13 @@ spec:
       labels:
         app: dashboard-backend
     spec:
+      initContainers:
+      - name: create-migrations-dir
+        image: alpine:latest
+        command: ["mkdir", "-p", "/db/migrations"]
+        volumeMounts:
+        - name: migrations
+          mountPath: /db
       containers:
       - name: backend
         image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
@@ -99,11 +109,18 @@ spec:
             port: http
           initialDelaySeconds: 5
           periodSeconds: 5
+        volumeMounts:
+        - name: migrations
+          mountPath: /db
+      volumes:
+      - name: migrations
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: dashboard-backend
+  namespace: chainguard-app
 spec:
   selector:
     app: dashboard-backend

@@ -47,9 +47,11 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Run migrations
-	if err := db.Migrate(pool, "db/migrations"); err != nil {
-		log.Fatalf("migration failed: %v", err)
+	// Run migrations unless explicitly skipped
+	if os.Getenv("SKIP_MIGRATIONS") != "true" {
+		if err := db.Migrate(pool, "db/migrations"); err != nil {
+			log.Fatalf("migration failed: %v", err)
+		}
 	}
 
 	// Start HTTP server

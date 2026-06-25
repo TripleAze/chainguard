@@ -2,16 +2,16 @@ package db
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tripleaze/chainguard/dashboard/backend/models"
 )
+
+//go:embed migrations/001_init.sql
+var migration001 string
 
 // Connect creates a PostgreSQL connection pool
 func Connect(databaseURL string) (*pgxpool.Pool, error) {
@@ -30,30 +30,11 @@ func Connect(databaseURL string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// Migrate runs all .sql files in migrationsDir in order
-func Migrate(pool *pgxpool.Pool, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return fmt.Errorf("read migrations dir: %w", err)
-	}
-
-	var files []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
-			files = append(files, filepath.Join(migrationsDir, e.Name()))
-		}
-	}
-	sort.Strings(files)
-
+// Migrate runs all embedded migrations in order
+func Migrate(pool *pgxpool.Pool, _ string) error {
 	ctx := context.Background()
-	for _, f := range files {
-		sql, err := os.ReadFile(f)
-		if err != nil {
-			return fmt.Errorf("read %s: %w", f, err)
-		}
-		if _, err := pool.Exec(ctx, string(sql)); err != nil {
-			return fmt.Errorf("run %s: %w", f, err)
-		}
+	if _, err := pool.Exec(ctx, migration001); err != nil {
+		return fmt.Errorf("run migration 001_init.sql: %w", err)
 	}
 	return nil
 }
