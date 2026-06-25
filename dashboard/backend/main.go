@@ -18,6 +18,10 @@ func main() {
 	// Required env vars
 	databaseURL := mustEnv("DATABASE_URL")
 	ingestKey := mustEnv("DASHBOARD_INGEST_KEY")
+	githubClientID := mustEnv("GITHUB_CLIENT_ID")
+	githubClientSecret := mustEnv("GITHUB_CLIENT_SECRET")
+	callbackURL := mustEnv("GITHUB_CALLBACK_URL")
+	sessionKey := mustEnv("SESSION_KEY")
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -37,7 +41,7 @@ func main() {
 	}
 
 	// Start HTTP server
-	srv := api.NewServer(pool, ingestKey, version)
+	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey)
 	log.Printf("ChainGuard dashboard backend v%s — listening on :%s", version, port)
 	if err := srv.Listen(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)

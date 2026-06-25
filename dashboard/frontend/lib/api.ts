@@ -25,7 +25,7 @@ export function getReleases(params: { page?: number; limit?: number }): Promise<
 }
 
 export function getRelease(digest: string): Promise<Release> {
-	return apiFetch<Release>(`/api/releases/${encodeURIComponent(digest)}`)
+	return apiFetch<Release>(`/api/releases/${digest}`)
 }
 
 export function getCVETrend(days: number): Promise<CVETrendResponse> {

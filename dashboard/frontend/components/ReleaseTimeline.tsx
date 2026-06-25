@@ -9,7 +9,7 @@ interface Props {
 
 function CheckDot({ passed }: { passed: boolean }) {
 	return (
-		<span className={`inline-block w-2 h-2 rounded-full ${passed ? 'bg-green-400' : 'bg-red-400'}`} />
+		<span className={`inline-block w-3 h-3 rounded-full ${passed ? 'bg-green-400' : 'bg-red-400'}`} />
 	)
 }
 
@@ -50,7 +50,7 @@ export default function ReleaseTimeline({ releases }: Props) {
 						>
 							<td className="px-4 py-3">
 								<Link
-									href={`/releases/${encodeURIComponent(r.digest)}`}
+									href={`/releases/${r.digest}`}
 									className="font-mono text-cyan-400 hover:text-cyan-300 text-xs"
 								>
 									{r.digest.slice(7, 19)}...

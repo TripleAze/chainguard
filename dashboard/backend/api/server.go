@@ -8,26 +8,52 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tripleaze/chainguard/dashboard/backend/db"
 	"github.com/tripleaze/chainguard/dashboard/backend/models"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
 )
 
 // Server holds shared dependencies
 type Server struct {
-	pool      *pgxpool.Pool
-	ingestKey string
-	version   string
-	mux       *http.ServeMux
+	pool       *pgxpool.Pool
+	ingestKey  string
+	version    string
+	oauthCfg   *oauth2.Config
+	sessionKey []byte
+	store      *sessions.CookieStore
+	mux        *http.ServeMux
 }
 
 // NewServer wires up all routes and returns a ready Server
-func NewServer(pool *pgxpool.Pool, ingestKey, version string) *Server {
+func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string) *Server {
+	oauthCfg := &oauth2.Config{
+		ClientID:     githubClientID,
+		ClientSecret: githubClientSecret,
+		RedirectURL:  callbackURL,
+		Scopes:       []string{"read:user", "user:email"},
+		Endpoint:     github.Endpoint,
+	}
+
+	store := sessions.NewCookieStore([]byte(sessionKey))
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7, // 1 week
+		HttpOnly: true,
+		Secure:   false, // Set to true in production
+		SameSite: http.SameSiteLaxMode,
+	}
+
 	s := &Server{
-		pool:      pool,
-		ingestKey: ingestKey,
-		version:   version,
-		mux:       http.NewServeMux(),
+		pool:       pool,
+		ingestKey:  ingestKey,
+		version:    version,
+		oauthCfg:   oauthCfg,
+		sessionKey: []byte(sessionKey),
+		store:      store,
+		mux:        http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -42,15 +68,19 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) routes() {
 	// Public
 	s.mux.HandleFunc("GET /health", s.handleHealth)
-
-	// Dashboard API — read endpoints (no auth for internal use)
-	s.mux.HandleFunc("GET /api/releases", s.handleListReleases)
-	s.mux.HandleFunc("GET /api/releases/{digest}", s.handleGetRelease)
-	s.mux.HandleFunc("GET /api/stats", s.handleStats)
-	s.mux.HandleFunc("GET /api/stats/cve-trend", s.handleCVETrend)
+	s.mux.HandleFunc("GET /api/auth/login", s.handleLogin)
+	s.mux.HandleFunc("GET /api/auth/callback", s.handleCallback)
 
 	// Ingest endpoint — requires API key (called by CI)
 	s.mux.HandleFunc("POST /api/ingest", s.requireAPIKey(s.handleIngest))
+
+	// Dashboard API — requires user auth
+	s.mux.HandleFunc("GET /api/auth/user", s.requireAuth(s.handleUser))
+	s.mux.HandleFunc("POST /api/auth/logout", s.requireAuth(s.handleLogout))
+	s.mux.HandleFunc("GET /api/releases", s.requireAuth(s.handleListReleases))
+	s.mux.HandleFunc("GET /api/releases/{digest}", s.requireAuth(s.handleGetRelease))
+	s.mux.HandleFunc("GET /api/stats", s.requireAuth(s.handleStats))
+	s.mux.HandleFunc("GET /api/stats/cve-trend", s.requireAuth(s.handleCVETrend))
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -81,7 +111,130 @@ func (s *Server) requireAPIKey(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := s.store.Get(r, "chainguard-session")
+		if err != nil {
+			s.writeError(w, http.StatusUnauthorized, "invalid session")
+			return
+		}
+
+		if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+			s.writeError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+
+		next(w, r)
+	}
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
+
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	session, err := s.store.Get(r, "chainguard-session")
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to get session")
+		return
+	}
+
+	state := fmt.Sprintf("%d", time.Now().UnixNano())
+	session.Values["oauth_state"] = state
+	if err := session.Save(r, w); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to save session")
+		return
+	}
+
+	http.Redirect(w, r, s.oauthCfg.AuthCodeURL(state), http.StatusFound)
+}
+
+func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
+	session, err := s.store.Get(r, "chainguard-session")
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to get session")
+		return
+	}
+
+	if r.URL.Query().Get("state") != session.Values["oauth_state"] {
+		s.writeError(w, http.StatusBadRequest, "invalid state parameter")
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	token, err := s.oauthCfg.Exchange(r.Context(), code)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to exchange code for token")
+		return
+	}
+
+	client := s.oauthCfg.Client(r.Context(), token)
+	resp, err := client.Get("https://api.github.com/user")
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to get user info")
+		return
+	}
+	defer resp.Body.Close()
+
+	var githubUser struct {
+		Login     string `json:"login"`
+		ID        int    `json:"id"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&githubUser); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to parse user info")
+		return
+	}
+
+	session.Values["authenticated"] = true
+	session.Values["user_login"] = githubUser.Login
+	session.Values["user_name"] = githubUser.Name
+	session.Values["user_email"] = githubUser.Email
+	session.Values["user_avatar"] = githubUser.AvatarURL
+	if err := session.Save(r, w); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to save session")
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {
+	session, err := s.store.Get(r, "chainguard-session")
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to get session")
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"login":  session.Values["user_login"],
+		"name":   session.Values["user_name"],
+		"email":  session.Values["user_email"],
+		"avatar": session.Values["user_avatar"],
+	})
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	session, err := s.store.Get(r, "chainguard-session")
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to get session")
+		return
+	}
+
+	session.Values["authenticated"] = false
+	delete(session.Values, "user_login")
+	delete(session.Values, "user_name")
+	delete(session.Values, "user_email")
+	delete(session.Values, "user_avatar")
+	session.Options.MaxAge = -1
+
+	if err := session.Save(r, w); err != nil {
+		s.writeError(w, http.StatusInternalServerError, "failed to save session")
+		return
+	}
+
+	s.writeJSON(w, http.StatusOK, map[string]string{"status": "logged out"})
+}
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, map[string]string{

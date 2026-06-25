@@ -3,12 +3,32 @@ import CheckBadge from '@/components/CheckBadge'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+function ArrowLeftIcon() {
+	return (
+		<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+			<line x1="19" y1="12" x2="5" y2="12" />
+			<polyline points="12 19 5 12 12 5" />
+		</svg>
+	)
+}
+
+function ExternalLinkIcon() {
+	return (
+		<svg className="w-4 h-4 inline ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+			<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+			<polyline points="15 3 21 3 21 9" />
+			<line x1="10" y1="14" x2="21" y2="3" />
+		</svg>
+	)
+}
+
 interface Props {
-	params: { digest: string }
+	params: Promise<{ digest: string }>
 }
 
 export default async function ReleasePage({ params }: Props) {
-	const release = await getRelease(params.digest).catch(() => null)
+	const { digest } = await params
+	const release = await getRelease(digest).catch(() => null)
 	if (!release) notFound()
 
 	const shortDigest = release.digest.replace('sha256:', 'sha256:').slice(0, 19) + '...'
@@ -18,8 +38,9 @@ export default async function ReleasePage({ params }: Props) {
 		<main className="min-h-screen bg-gray-950 text-gray-100">
 			<header className="border-b border-gray-800 bg-gray-900">
 				<div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
-					<Link href="/" className="text-gray-400 hover:text-white text-sm">
-						← Dashboard
+					<Link href="/" className="text-gray-400 hover:text-white text-sm flex items-center gap-2">
+						<ArrowLeftIcon />
+						Dashboard
 					</Link>
 					<span className="text-gray-600">/</span>
 					<span className="text-sm text-gray-300 font-mono">{shortDigest}</span>
@@ -31,9 +52,7 @@ export default async function ReleasePage({ params }: Props) {
 				<div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
 					<div className="flex items-start justify-between">
 						<div>
-							<h1 className="text-lg font-semibold text-white font-mono">
-								{release.image_ref}
-							</h1>
+							<h1 className="text-lg font-semibold text-white">{release.image_ref}</h1>
 							<p className="text-sm text-gray-400 font-mono mt-1">{release.digest}</p>
 						</div>
 						<span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -102,9 +121,10 @@ export default async function ReleasePage({ params }: Props) {
 						href={release.workflow_run}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+						className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors flex items-center gap-2"
 					>
-						View in GitHub Actions ↗
+						View in GitHub Actions
+						<ExternalLinkIcon />
 					</a>
 				</div>
 			</div>

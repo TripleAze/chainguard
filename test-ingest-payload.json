@@ -1,0 +1,48 @@
+{
+  "git_commit": "cd2e35d7d3265068e1f7d68310593c192c9c43b",
+  "git_ref": "refs/heads/main",
+  "workflow_run": "https://github.com/TripleAze/chainguard/actions/runs/27774397191",
+  "built_at": "2026-06-25T12:30:00Z",
+  "image": "ghcr.io/tripleaze/chainguard/app:latest",
+  "digest": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+  "report": {
+    "image": "ghcr.io/tripleaze/chainguard/app:latest",
+    "digest": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    "overall": "PASS",
+    "passed": true,
+    "signature": {
+      "passed": true,
+      "message": "Signature verified",
+      "detail": "Valid cosign signature from TripleAze"
+    },
+    "sbom": {
+      "passed": true,
+      "message": "SBOM verified",
+      "package_count": 42,
+      "format": "spdx-json",
+      "spdx_version": "2.3"
+    },
+    "vuln_scan": {
+      "passed": true,
+      "message": "No critical vulnerabilities found",
+      "scanner": "grype",
+      "scanner_version": "0.81.0",
+      "db_built_at": "2026-06-24T00:00:00Z",
+      "summary": {
+        "critical": 0,
+        "high": 3,
+        "medium": 7,
+        "low": 12
+      }
+    },
+    "provenance": {
+      "passed": true,
+      "message": "Provenance verified",
+      "source_repo": "https://github.com/TripleAze/chainguard",
+      "source_commit": "cd2e35d7d3265068e1f7d68310593c192c9c43b",
+      "source_ref": "refs/heads/main",
+      "builder_id": "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/v2.0.0",
+      "slsa_level": 3
+    }
+  }
+}
