@@ -15,7 +15,7 @@ cd ../../
 
 echo "Installing Kyverno..."
 kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.11.4/install.yaml
-sleep 15
+sleep 20
 
 echo "Applying Kyverno Policies..."
 kubectl apply -k policy/kyverno/                

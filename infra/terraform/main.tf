@@ -76,3 +76,27 @@ resource "aws_security_group_rule" "ingress_load_balancer_api" {
   security_group_id = module.eks.cluster_primary_security_group_id
   description       = "Allow ALB to talk to Pods on port 8080"
 }
+
+# Route53 Zone
+resource "aws_route53_zone" "primary" {
+  name = var.domain_name
+  comment = "Managed by Terraform"
+}
+
+# Generate SSL Cert using the standard module
+module "acm" {
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 5.0"
+
+  domain_name = aws_route53_zone.primary.name
+  zone_id     = aws_route53_zone.primary.zone_id
+
+  # Validates the cert automatically via Route 53
+  validation_method = "DNS"
+
+  subject_alternative_names = [
+    "*.${aws_route53_zone.primary.name}",
+  ]
+
+  wait_for_validation = true
+}

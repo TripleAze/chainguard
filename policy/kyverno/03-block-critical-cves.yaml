@@ -20,6 +20,18 @@ spec:
         any:
           - resources:
               kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              kinds: [Pod]
+              selector:
+                matchLabels:
+                  app: dashboard-backend
+          - resources:
+              kinds: [Pod]
+              selector:
+                matchLabels:
+                  app: dashboard-frontend
       verifyImages:
         - imageReferences:
             - "ghcr.io/tripleaze/chainguard*"

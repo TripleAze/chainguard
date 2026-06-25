@@ -6,12 +6,12 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'  # For production
-    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:123456789012:certificate/your-cert-arn
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:454448876799:certificate/402393f0-cacb-443a-a292-99e706f61447
 spec:
   ingressClassName: alb
   rules:
-  - host: "my-dashboard-domain.com"  # Replace with your actual domain
+  - host: "atiqabubakar.sbs"
     http:
       paths:
       - path: /api
