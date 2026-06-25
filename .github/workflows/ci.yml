@@ -425,3 +425,46 @@ jobs:
           name: chaincheck-report
           path: chaincheck-report.json
           retention-days: 90
+
+      - name: Ingest report into dashboard
+        if: always()
+        env:
+          DASHBOARD_API_URL: ${{ secrets.DASHBOARD_API_URL }}
+          DASHBOARD_INGEST_KEY: ${{ secrets.DASHBOARD_INGEST_KEY }}
+        run: |
+          if [ -z "$DASHBOARD_API_URL" ] || [ -z "$DASHBOARD_INGEST_KEY" ]; then
+            echo "Dashboard credentials not set — skipping ingest"
+            exit 0
+          fi
+
+          DIGEST="${{ needs.build.outputs.digest }}"
+          IMAGE_REF="${{ needs.build.outputs.image-ref }}"
+
+          # Create the ingest payload
+          jq -n \
+            --arg image "$IMAGE_REF" \
+            --arg digest "$DIGEST" \
+            --arg git_commit "$GITHUB_SHA" \
+            --arg git_ref "$GITHUB_REF" \
+            --arg workflow_run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg built_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --slurpfile report chaincheck-report.json \
+            '{
+              image: $image,
+              digest: $digest,
+              report: $report[0],
+              git_commit: $git_commit,
+              git_ref: $git_ref,
+              workflow_run: $workflow_run,
+              built_at: $built_at
+            }' > ingest-payload.json
+
+          # Send to dashboard
+          curl -X POST "${DASHBOARD_API_URL}/api/ingest" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${DASHBOARD_INGEST_KEY}" \
+            -d @ingest-payload.json \
+            -w "\nHTTP Status: %{http_code}\n" \
+            -f || {
+              echo "Ingest failed, but continuing..."
+            }
