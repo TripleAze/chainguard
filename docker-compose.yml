@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: cgr.dev/chainguard/postgres:latest
+    environment:
+      POSTGRES_USER: chainguard
+      POSTGRES_PASSWORD: chainguard
+      POSTGRES_DB: chainguard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chainguard -d chainguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./dashboard/backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://chainguard:chainguard@postgres:5432/chainguard
+      DASHBOARD_INGEST_KEY: test-ingest-key-12345
+      PORT: 8080
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:8080/api/auth/callback}
+      SESSION_KEY: ${SESSION_KEY:-your-super-secret-session-key-change-in-production}
+      GITHUB_ALLOWED_USERS: ${GITHUB_ALLOWED_USERS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./dashboard/frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

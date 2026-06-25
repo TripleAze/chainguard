@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/tripleaze/chainguard/dashboard/backend/api"
@@ -23,6 +24,17 @@ func main() {
 	callbackURL := mustEnv("GITHUB_CALLBACK_URL")
 	sessionKey := mustEnv("SESSION_KEY")
 
+	// Optional: allowed users (comma-separated)
+	allowedUsersStr := os.Getenv("GITHUB_ALLOWED_USERS")
+	var allowedUsers []string
+	if allowedUsersStr != "" {
+		allowedUsers = strings.Split(allowedUsersStr, ",")
+		// Trim whitespace
+		for i, u := range allowedUsers {
+			allowedUsers[i] = strings.TrimSpace(u)
+		}
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -41,7 +53,7 @@ func main() {
 	}
 
 	// Start HTTP server
-	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey)
+	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey, allowedUsers)
 	log.Printf("ChainGuard dashboard backend v%s — listening on :%s", version, port)
 	if err := srv.Listen(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)

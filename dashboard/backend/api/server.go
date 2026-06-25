@@ -18,17 +18,18 @@ import (
 
 // Server holds shared dependencies
 type Server struct {
-	pool       *pgxpool.Pool
-	ingestKey  string
-	version    string
-	oauthCfg   *oauth2.Config
-	sessionKey []byte
-	store      *sessions.CookieStore
-	mux        *http.ServeMux
+	pool         *pgxpool.Pool
+	ingestKey    string
+	version      string
+	oauthCfg     *oauth2.Config
+	sessionKey   []byte
+	store        *sessions.CookieStore
+	allowedUsers map[string]bool
+	mux          *http.ServeMux
 }
 
 // NewServer wires up all routes and returns a ready Server
-func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string) *Server {
+func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string, allowedUsers []string) *Server {
 	oauthCfg := &oauth2.Config{
 		ClientID:     githubClientID,
 		ClientSecret: githubClientSecret,
@@ -46,14 +47,22 @@ func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubCli
 		SameSite: http.SameSiteLaxMode,
 	}
 
+	allowedUsersMap := make(map[string]bool)
+	for _, u := range allowedUsers {
+		if u != "" {
+			allowedUsersMap[u] = true
+		}
+	}
+
 	s := &Server{
-		pool:       pool,
-		ingestKey:  ingestKey,
-		version:    version,
-		oauthCfg:   oauthCfg,
-		sessionKey: []byte(sessionKey),
-		store:      store,
-		mux:        http.NewServeMux(),
+		pool:         pool,
+		ingestKey:    ingestKey,
+		version:      version,
+		oauthCfg:     oauthCfg,
+		sessionKey:   []byte(sessionKey),
+		store:        store,
+		allowedUsers: allowedUsersMap,
+		mux:          http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -87,9 +96,14 @@ func (s *Server) routes() {
 
 func (s *Server) withMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -104,7 +118,7 @@ func (s *Server) requireAPIKey(next http.HandlerFunc) http.HandlerFunc {
 		auth := r.Header.Get("Authorization")
 		key := strings.TrimPrefix(auth, "Bearer ")
 		if key == "" || key != s.ingestKey {
-			s.writeError(w, http.StatusUnauthorized, "invalid or missing API key")
+			s.writeError(w, http.StatusUnauthorized, "invalid ingest key")
 			return
 		}
 		next(w, r)
@@ -183,6 +197,15 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&githubUser); err != nil {
 		s.writeError(w, http.StatusInternalServerError, "failed to parse user info")
+		return
+	}
+
+	// Check if user is allowed
+	if len(s.allowedUsers) > 0 && !s.allowedUsers[githubUser.Login] {
+		session.Values["authenticated"] = false
+		session.Options.MaxAge = -1
+		_ = session.Save(r, w)
+		s.writeError(w, http.StatusForbidden, "access denied: this GitHub account is not authorized")
 		return
 	}
 
