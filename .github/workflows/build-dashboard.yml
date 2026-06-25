@@ -24,12 +24,14 @@ jobs:
   build-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -54,6 +56,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
 
       - name: Build and push backend image
+        id: build-backend
         uses: docker/build-push-action@v6
         with:
           context: ./dashboard/backend
@@ -65,6 +68,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push frontend image
+        id: build-frontend
         uses: docker/build-push-action@v6
         with:
           context: ./dashboard/frontend
@@ -74,3 +78,36 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Install yq
+        if: github.event_name != 'pull_request'
+        uses: mikefarah/yq@v4.44.3
+
+      - name: Update Kubernetes manifests
+        if: github.event_name != 'pull_request'
+        run: |
+          # Get the tags from metadata (use first tag as primary)
+          BACKEND_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -n 1)
+          FRONTEND_TAG=$(echo "${{ steps.meta-frontend.outputs.tags }}" | head -n 1)
+
+          # Update backend deployment
+          yq eval ".spec.template.spec.containers[0].image = \"${BACKEND_TAG}\"" -i deploy/dashboard-backend.yml
+
+          # Update frontend deployment
+          yq eval ".spec.template.spec.containers[0].image = \"${FRONTEND_TAG}\"" -i deploy/dashboard-frontend.yml
+
+      - name: Commit and push manifest changes
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add deploy/dashboard-backend.yml deploy/dashboard-frontend.yml
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit"
+          else
+            git commit -m "chore: update dashboard images to latest tags"
+            git push
+          fi
