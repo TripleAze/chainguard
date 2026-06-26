@@ -12,8 +12,8 @@ import (
 func RenderText(result InspectResult) {
 	color.NoColor = false
 
-	fmt.Println("\n🔍 ChainGuard Inspection Report")
-	fmt.Println("──────────────────────────────────────────────────────")
+	fmt.Println("\n� ChainGuard Inspection Report")
+	fmt.Println("══════════════════════════════════════════════════════")
 	fmt.Printf("Image:   %s\n", result.Image)
 	fmt.Printf("Digest:  %s\n", result.Digest)
 	fmt.Println()
@@ -55,23 +55,23 @@ func RenderText(result InspectResult) {
 	}
 	fmt.Println()
 
-	fmt.Println("──────────────────────────────────────────────────────")
+	fmt.Println("══════════════════════════════════════════════════════")
 	if result.Passed {
-		fmt.Println("Overall:", color.GreenString("PASS ✅"))
+		fmt.Println("Overall:", color.GreenString("✓ SUCCESS"))
 	} else {
-		fmt.Println("Overall:", color.RedString("FAIL ❌"))
+		fmt.Println("Overall:", color.RedString("✗ FAILURE"))
 	}
 	fmt.Println()
 }
 
 func renderCheck(name string, result CheckResult) {
 	if result.Passed {
-		fmt.Printf("✅ %-14s%s\n", name, color.GreenString("Valid"))
+		fmt.Printf("✓ %-15s%s\n", name, color.GreenString("Passed"))
 		if result.Detail != "" {
 			renderDetail(result.Detail)
 		}
 	} else {
-		fmt.Printf("❌ %-14s%s\n", name, color.RedString("Failed"))
+		fmt.Printf("✗ %-15s%s\n", name, color.RedString("Failed"))
 		renderDetail(color.RedString(result.Message))
 	}
 }
