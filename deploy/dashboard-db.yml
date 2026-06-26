@@ -16,18 +16,18 @@ type: Opaque
 stringData:
   POSTGRES_PASSWORD: "gLTjDbdo5QrgtekfwFpYPgseUYDrCcKnFuPi5oGJ34k="
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: dashboard-db-pvc
-  namespace: chainguard-app
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: gp2
-  resources:
-    requests:
-      storage: 1Gi
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: dashboard-db-pvc
+#   namespace: chainguard-app
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   storageClassName: gp2
+#   resources:
+#     requests:
+#       storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -99,8 +99,7 @@ spec:
           periodSeconds: 5
       volumes:
       - name: data
-        persistentVolumeClaim:
-          claimName: dashboard-db-pvc
+        emptyDir: {}
 
 ---
 apiVersion: v1

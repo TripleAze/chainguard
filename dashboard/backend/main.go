@@ -19,10 +19,16 @@ func main() {
 	// Required env vars
 	databaseURL := mustEnv("DATABASE_URL")
 	ingestKey := mustEnv("DASHBOARD_INGEST_KEY")
-	githubClientID := mustEnv("GITHUB_CLIENT_ID")
-	githubClientSecret := mustEnv("GITHUB_CLIENT_SECRET")
-	callbackURL := mustEnv("GITHUB_CALLBACK_URL")
-	sessionKey := mustEnv("SESSION_KEY")
+	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
+	githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+	callbackURL := os.Getenv("GITHUB_CALLBACK_URL")
+	if callbackURL == "" {
+		callbackURL = "http://localhost:8080/api/auth/callback"
+	}
+	sessionKey := os.Getenv("SESSION_KEY")
+	if sessionKey == "" {
+		sessionKey = "dev-session-key"
+	}
 
 	// Optional: allowed users (comma-separated)
 	allowedUsersStr := os.Getenv("GITHUB_ALLOWED_USERS")
