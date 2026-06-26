@@ -12,7 +12,7 @@ import (
 func RenderText(result InspectResult) {
 	color.NoColor = false
 
-	fmt.Println("\n� ChainGuard Inspection Report")
+	fmt.Println("\n🔗 ChainGuard Inspection Report")
 	fmt.Println("══════════════════════════════════════════════════════")
 	fmt.Printf("Image:   %s\n", result.Image)
 	fmt.Printf("Digest:  %s\n", result.Digest)
