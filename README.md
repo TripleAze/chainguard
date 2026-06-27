@@ -74,13 +74,6 @@ ChainGuard ensures **every image reaching production carries verifiable, signed 
 | **Vulnerability Scan** | Signed Grype vulnerability scan attestation is present with severity breakdown |
 | **Provenance** | SLSA Level 2 provenance records source commit, branch, and builder |
 
-## Roadmap
-
-- [x] **Phase 1** — CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
-- [x] **Phase 2** — GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
-- [x] **Phase 3** — `chaincheck` CLI: one-command trust inspection for any image
-- [x] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail
-
 ## Quick Start
 
 ### 1. Install chaincheck
@@ -124,6 +117,8 @@ See [dashboard/README.md](dashboard/README.md) for full setup instructions.
 
 - [Architecture & Design Decisions](docs/architecture.md)
 - [chaincheck CLI Documentation](chaincheck/README.md)
+- [dashboard/README.md](dashboard/README.md)
+- [Kyverno Policies](policy/kyverno/README.md)
 
 ## What Gets Produced Per Build
 
@@ -187,8 +182,7 @@ chainguard/
 
 ## Roadmap
 
-- [x] **Phase 1** — CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
-- [x] **Phase 2** — GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
-- [x] **Phase 3** — `chaincheck` CLI: one-command trust inspection for any image
-- [X] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail
->>>>>>> 90f78c3ca7f5e4def11e8e4d8dbc8d48737b9373
+- [x] **Phase 1** · CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
+- [x] **Phase 2** · GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
+- [x] **Phase 3** · `chaincheck` CLI: one-command trust inspection for any image
+- [X] **Phase 4** · Compliance dashboard: release history, CVE trends, policy pass/fail
