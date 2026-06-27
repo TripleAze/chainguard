@@ -129,4 +129,4 @@ chainguard/
 - [x] **Phase 1** — CI pipeline: SBOM, CVE gate, sign, attest (SBOM + vuln + provenance)
 - [x] **Phase 2** — GitOps CD with ArgoCD + Kyverno admission enforcement on EKS
 - [x] **Phase 3** — `chaincheck` CLI: one-command trust inspection for any image
-- [ ] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail
+- [X] **Phase 4** — Compliance dashboard: release history, CVE trends, policy pass/fail
