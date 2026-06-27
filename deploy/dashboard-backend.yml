@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,30 +7,6 @@ metadata:
 data:
   PORT: "8080"
   GITHUB_CALLBACK_URL: "http://localhost:8080/api/auth/callback"
-spec:
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dashboard-backend-secret
-  namespace: chainguard-app
-type: Opaque
-stringData:
-  DATABASE_URL: "postgresql://chainguard:gLTjDbdo5QrgtekfwFpYPgseUYDrCcKnFuPi5oGJ34k=@dashboard-db:5432/chainguard"
-  DASHBOARD_INGEST_KEY: "test-ingest-key-12345"
-  GITHUB_CLIENT_ID: "Ov23liC1PBAz1UYaHnQJ"
-  GITHUB_CLIENT_SECRET: "ca4f81f9e85804f6cf5e1aaa724fe55c944f4839"
-  SESSION_KEY: "n8BOd1tHhhgqRALJ+F1CCqje9K50npSzgRlOxBG2hhk="
-  GITHUB_ALLOWED_USERS: "TripleAze"
-spec:
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -138,7 +115,3 @@ spec:
     - port: 8080
       targetPort: http
   type: ClusterIP
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/TripleAze/chainguard/dashboard/backend/models"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tripleaze/chainguard/dashboard/backend/models"
 )
 
 //go:embed migrations/001_init.sql

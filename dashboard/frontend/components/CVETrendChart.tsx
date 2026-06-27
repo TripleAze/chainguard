@@ -37,7 +37,7 @@ export default function CVETrendChart({ data }: Props) {
 	if (!data?.length) {
 		return (
 			<div className="h-52 flex items-center justify-center text-gray-500 text-sm">
-				No trend data yet — releases will populate this chart.
+				No trend data yet · Releases will populate this chart.
 			</div>
 		)
 	}

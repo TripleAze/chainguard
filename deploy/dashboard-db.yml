@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,39 +8,17 @@ data:
   POSTGRES_DB: chainguard
   POSTGRES_USER: chainguard
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dashboard-db-secret
-  namespace: chainguard-app
-type: Opaque
-stringData:
-  POSTGRES_PASSWORD: "gLTjDbdo5QrgtekfwFpYPgseUYDrCcKnFuPi5oGJ34k="
----
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: dashboard-db-pvc
-#   namespace: chainguard-app
-# spec:
-#   accessModes:
-#     - ReadWriteOnce
-#   storageClassName: gp2
-#   resources:
-#     requests:
-#       storage: 1Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: dashboard-db
   namespace: chainguard-app
 spec:
+  serviceName: dashboard-db
+  replicas: 1
   selector:
     matchLabels:
       app: dashboard-db
-  serviceName: dashboard-db
-  replicas: 1
   template:
     metadata:
       labels:
@@ -49,8 +28,8 @@ spec:
       - name: postgres
         image: cgr.dev/chainguard/postgres:latest
         ports:
-        - containerPort: 5432
-          name: postgres
+        - name: postgres
+          containerPort: 5432
         env:
         - name: POSTGRES_DB
           valueFrom:
@@ -71,12 +50,12 @@ spec:
         - name: data
           mountPath: /var/lib/postgresql/data
         resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
           requests:
             cpu: 250m
             memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         livenessProbe:
           exec:
             command:
@@ -97,10 +76,15 @@ spec:
             - chainguard
           initialDelaySeconds: 5
           periodSeconds: 5
-      volumes:
-      - name: data
-        emptyDir: {}
-
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

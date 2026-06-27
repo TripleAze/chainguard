@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/TripleAze/chainguard/dashboard/backend/api"
+	"github.com/TripleAze/chainguard/dashboard/backend/db"
 	"github.com/joho/godotenv"
-	"github.com/tripleaze/chainguard/dashboard/backend/api"
-	"github.com/tripleaze/chainguard/dashboard/backend/db"
 )
 
 var version = "dev"
@@ -28,6 +28,11 @@ func main() {
 	sessionKey := os.Getenv("SESSION_KEY")
 	if sessionKey == "" {
 		sessionKey = "dev-session-key"
+	}
+
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
 	}
 
 	// Optional: allowed users (comma-separated)
@@ -61,7 +66,7 @@ func main() {
 	}
 
 	// Start HTTP server
-	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey, allowedUsers)
+	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey, allowedUsers, frontendURL)
 	log.Printf("ChainGuard dashboard backend v%s — listening on :%s", version, port)
 	if err := srv.Listen(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)

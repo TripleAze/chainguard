@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TripleAze/chainguard/dashboard/backend/db"
+	"github.com/TripleAze/chainguard/dashboard/backend/models"
 	"github.com/gorilla/sessions"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tripleaze/chainguard/dashboard/backend/db"
-	"github.com/tripleaze/chainguard/dashboard/backend/models"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
 )
@@ -25,11 +25,12 @@ type Server struct {
 	sessionKey   []byte
 	store        *sessions.CookieStore
 	allowedUsers map[string]bool
+	frontendURL  string
 	mux          *http.ServeMux
 }
 
 // NewServer wires up all routes and returns a ready Server
-func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string, allowedUsers []string) *Server {
+func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string, allowedUsers []string, frontendURL string) *Server {
 	oauthCfg := &oauth2.Config{
 		ClientID:     githubClientID,
 		ClientSecret: githubClientSecret,
@@ -62,6 +63,7 @@ func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubCli
 		sessionKey:   []byte(sessionKey),
 		store:        store,
 		allowedUsers: allowedUsersMap,
+		frontendURL:  frontendURL,
 		mux:          http.NewServeMux(),
 	}
 	s.routes()
@@ -127,7 +129,31 @@ func (s *Server) requireAPIKey(next http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// For local dev, always allow requests without auth
+		session, err := s.store.Get(r, "chainguard-session")
+		if err != nil {
+			s.writeError(w, http.StatusUnauthorized, "invalid session")
+			return
+		}
+
+		if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+			s.writeError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+
+		// Check if user is allowed (if allowedUsers is non-empty)
+		if len(s.allowedUsers) > 0 {
+			userLogin, ok := session.Values["user_login"].(string)
+			if !ok {
+				s.writeError(w, http.StatusUnauthorized, "invalid user session")
+				return
+			}
+
+			if !s.allowedUsers[userLogin] {
+				s.writeError(w, http.StatusForbidden, "access denied: this GitHub account is not authorized")
+				return
+			}
+		}
+
 		next(w, r)
 	}
 }
@@ -209,7 +235,7 @@ func (s *Server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, s.frontendURL, http.StatusFound)
 }
 
 func (s *Server) handleUser(w http.ResponseWriter, r *http.Request) {

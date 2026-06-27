@@ -36,3 +36,7 @@ razz-bug-calenderapp/dist/
 # Dashboard backend .env
 dashboard/backend/.env
 
+# Deployment secrets
+deploy/dashboard-backend-secret.yml
+deploy/dashboard-db-secret.yml
+
