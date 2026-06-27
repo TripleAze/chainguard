@@ -8,6 +8,7 @@ import SummaryCards from '@/components/SummaryCards'
 import CVETrendChart from '@/components/CVETrendChart'
 import ReleaseTimeline from '@/components/ReleaseTimeline'
 import { SummaryReport } from '@/components/pdf/SummaryReport'
+import { LogoSVG } from '@/components/LogoSVG'
 import { clientGetSummary, clientGetReleases, clientGetCVETrend } from '@/lib/clientApi'
 import { Summary, ReleasesResponse, CVETrendResponse } from '@/types/release'
 
@@ -84,15 +85,7 @@ export default function DashboardPage() {
 			}}>
 				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
 					<div className="flex flex-col items-center">
-						<img
-							src="/chainguard-logo.png"
-							alt="ChainGuard"
-							style={{
-								height: 64,
-								width: 'auto',
-								background: 'transparent'
-							}}
-						/>
+						<LogoSVG height={72} />
 
 						<div className="mt-6 text-center">
 							<h1 className="text-white text-xl font-semibold">ChainGuard</h1>
@@ -139,7 +132,7 @@ export default function DashboardPage() {
 	return (
 		<>
 			<Header lastDeployAt={summary?.last_deploy_at} lastDeployPassed={lastPassed} />
-			<main className="min-h-screen bg-gray-950 text-gray-100 pt-17">
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-20">
 				{dataLoading ? (
 					<div className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-center">
 						<div className="text-gray-400">Loading dashboard...</div>
@@ -164,7 +157,7 @@ export default function DashboardPage() {
 						{/* Release timeline */}
 						{releasesData && (
 							<section>
-								<div className="flex items-center justify-between mb-4">
+								<div className="flex items-center justify-between mb-5">
 									<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
 										Recent Releases
 									</h2>
@@ -175,7 +168,7 @@ export default function DashboardPage() {
 												fileName="chainguard-portfolio-summary.pdf"
 											>
 												{({ loading }) => (
-													<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm">
+													<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm">
 														{loading ? 'Generating...' : '⬇ Export PDF'}
 													</button>
 												)}

@@ -30,9 +30,9 @@
       "db_built_at": "2026-06-24T00:00:00Z",
       "summary": {
         "critical": 0,
-        "high": 3,
-        "medium": 7,
-        "low": 12
+        "high": 5,
+        "medium": 10,
+        "low": 20
       }
     },
     "provenance": {

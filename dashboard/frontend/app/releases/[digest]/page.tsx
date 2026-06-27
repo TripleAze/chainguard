@@ -7,6 +7,7 @@ import { useAuth } from '@/components/AuthProvider'
 import Header from '@/components/Header'
 import CheckBadge from '@/components/CheckBadge'
 import { ChainGuardReport } from '@/components/pdf/ChainGuardReport'
+import { LogoSVG } from '@/components/LogoSVG'
 import Link from 'next/link'
 import { clientGetRelease } from '@/lib/clientApi'
 import { Release } from '@/types/release'
@@ -91,15 +92,7 @@ export default function ReleasePage() {
 			}}>
 				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
 					<div className="flex flex-col items-center">
-						<img
-							src="/chainguard-logo.png"
-							alt="ChainGuard"
-							style={{
-								height: 64,
-								width: 'auto',
-								background: 'transparent'
-							}}
-						/>
+						<LogoSVG height={72} />
 
 						<div className="mt-6 text-center">
 							<h1 className="text-white text-xl font-semibold">ChainGuard</h1>
@@ -143,7 +136,7 @@ export default function ReleasePage() {
 	return (
 		<>
 			<Header showBack />
-			<main className="min-h-screen bg-gray-950 text-gray-100 pt-12">
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-14">
 				<div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
 					{error && (
 						<div className="bg-red-900/20 border border-red-800 rounded-lg p-4">

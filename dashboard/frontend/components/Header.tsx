@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useAuth } from '@/components/AuthProvider'
+import { LogoSVG } from '@/components/LogoSVG'
 
 function ShieldIcon() {
   return (
@@ -28,7 +28,7 @@ export default function Header({ lastDeployAt, lastDeployPassed, showBack = fals
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A] border-b border-[#1E293B] h-[48px]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A] border-b border-[#1E293B] h-[56px]">
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Left section */}
         <div className="flex items-center gap-0">
@@ -44,14 +44,7 @@ export default function Header({ lastDeployAt, lastDeployPassed, showBack = fals
               <div className="border-r border-[#1E293B] pr-3 mr-3"></div>
             </>
           )}
-          <Image
-            src="/chainguard-logo.png"
-            alt="ChainGuard"
-            width={192}
-            height={44}
-            priority
-            style={{ height: 44, width: 'auto', objectFit: 'contain' }}
-          />
+          <LogoSVG height={44} />
         </div>
 
         {/* Center section */}
