@@ -168,7 +168,7 @@ Health check endpoint.
 
 ### `/` (Home)
 - **Summary Cards**: Total Releases, Pass Rate, Critical CVEs, SLSA Level
-- **CVE Trend Line Chart: Last 30 days
+- **CVE Trend Line Chart**: Last 30 days
 - **Recent Releases Table**: Per‑release status dots for each check
 - **Export PDF Button**: Portfolio summary report
 
@@ -176,13 +176,13 @@ Health check endpoint.
 - **Image Metadata**: Ref, commit, branch, built date, SLSA level
 - **Security Checks**: Signature, SBOM, Vulnerability Scan, Provenance (each with PASS/FAIL badge and detail text)
 - **Export PDF Report Button**: Single release report
-- **View in GitHub Actions Link
+- **View in GitHub Actions Link**
 
 ---
 
 ## PDF EXPORT
 
-Two report types, generated **client‑side** using `@react-pdf/renderer:
+Two report types, generated **client‑side** using `@react-pdf/renderer`:
 
 ### Single Release Report
 1. Cover page with logo, metadata, overall PASS/FAIL
