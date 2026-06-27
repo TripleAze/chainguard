@@ -45,7 +45,7 @@ All checks run independently — a failed signature check does not prevent SBOM 
 
 ## Installation
 
-### Option 1 — Install script (recommended, no Go required)
+### Method 1 · Install script (recommended, no Go required)
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chaincheck/install.sh | sh
@@ -58,21 +58,20 @@ curl -sSfL https://raw.githubusercontent.com/TripleAze/chainguard/main/chainchec
   | sh -s -- -b ~/.local/bin
 ```
 
-### Option 2 — Go install
+### Method 2 · Go install
 
 ```bash
 go install github.com/TripleAze/chainguard/chaincheck/cmd/chaincheck@latest
 ```
 
-### Option 3 — From source
+### Method 3 · From source
 
 ```bash
 git clone https://github.com/TripleAze/chainguard
-cd chainguard/chaincheck
-make install          # installs to /usr/local/bin
+cd chainguard/chaincheck && make install
 ```
 
-### Uninstall
+## Uninstall
 
 ```bash
 chaincheck uninstall
@@ -83,6 +82,35 @@ Or via make:
 ```bash
 make uninstall
 ```
+
+## Versioning
+
+Check installed version:
+```bash
+chaincheck --version
+```
+
+Releases are cut by tagging:
+```bash
+git tag chaincheck/v1.x.x
+```
+
+## How It Works
+
+- Uses Cosign Go SDK (not subprocess) — no cosign binary required
+- `cosign.VerifyImageAttestations` returns ALL attestations
+- `chaincheck` filters by `predicateType` after verification
+- Handles both OCI referrers API and Cosign tag convention for provenance (v0.2 and v1 predicate types)
+- Supports both tag and digest references — tags auto-resolved to digest before verification
+
+## Known Predicate Types
+
+| Check       | Predicate Type                                                | Storage                     |
+|-------------|---------------------------------------------------------------|-----------------------------|
+| Signature   | Verified against `.sig` tag                                   | `.sig` tag                  |
+| SBOM        | `https://spdx.dev/Document`                                   | `.att` tag                 |
+| Vuln Scan   | `cosign.sigstore.dev/attestation/vuln/v1`                     | `.att` tag                 |
+| Provenance  | `https://slsa.dev/provenance/v0.2` or `https://slsa.dev/provenance/v1` | OCI referrers API or `.att` tag |
 
 ## Usage
 
@@ -224,11 +252,11 @@ make release-dry-run  # test GoReleaser config locally
 Releases are automated via GoReleaser. To cut a new release:
 
 ```bash
-git tag v1.1.2
-git push origin v1.1.2
+git tag chaincheck/v1.1.0
+git push origin chaincheck/v1.1.0
 ```
 
-GitHub Actions builds and publishes binaries for:
+GoReleaser builds:
 - `linux/amd64`, `linux/arm64`
 - `darwin/amd64`, `darwin/arm64`
-- `windows/amd64`
+- `windows/amd64`, `windows/arm64`
