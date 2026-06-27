@@ -1,12 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams, useRouter, notFound } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import CheckBadge from '@/components/CheckBadge'
+import { ChainGuardReport } from '@/components/pdf/ChainGuardReport'
 import Link from 'next/link'
 import { clientGetRelease } from '@/lib/clientApi'
 import { Release } from '@/types/release'
+
+const PDFDownloadLink = dynamic(
+  () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
+  { ssr: false }
+)
 
 function ArrowLeftIcon() {
 	return (
@@ -230,6 +237,16 @@ export default function ReleasePage() {
 
 				{/* Actions */}
 				<div className="flex gap-3">
+					<PDFDownloadLink
+						document={<ChainGuardReport release={release} />}
+						fileName={`chainguard-report-${release.digest.slice(7, 19)}.pdf`}
+					>
+						{({ loading }) => (
+							<button className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2">
+								{loading ? 'Generating...' : '⬇ Export PDF Report'}
+							</button>
+						)}
+					</PDFDownloadLink>
 					<a
 						href={release.workflow_run}
 						target="_blank"

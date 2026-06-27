@@ -1,12 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/components/AuthProvider'
 import SummaryCards from '@/components/SummaryCards'
 import CVETrendChart from '@/components/CVETrendChart'
 import ReleaseTimeline from '@/components/ReleaseTimeline'
+import { SummaryReport } from '@/components/pdf/SummaryReport'
 import { clientGetSummary, clientGetReleases, clientGetCVETrend } from '@/lib/clientApi'
 import { Summary, ReleasesResponse, CVETrendResponse } from '@/types/release'
+
+const PDFDownloadLink = dynamic(
+  () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
+  { ssr: false }
+)
 
 function ShieldIcon() {
 	return (
@@ -162,6 +169,22 @@ export default function DashboardPage() {
 								<CVETrendChart data={cveTrend.points} />
 							</div>
 						</section>
+					)}
+
+					{/* Export Button */}
+					{summary && releasesData && (
+						<div className="flex">
+							<PDFDownloadLink
+								document={<SummaryReport stats={summary} releases={releasesData.releases} />}
+								fileName="chainguard-portfolio-summary.pdf"
+							>
+								{({ loading }) => (
+									<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+										{loading ? 'Generating...' : '⬇ Export PDF'}
+									</button>
+								)}
+							</PDFDownloadLink>
+						</div>
 					)}
 
 					{/* Release timeline */}
