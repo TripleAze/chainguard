@@ -14,9 +14,11 @@ The ChainGuard Compliance Dashboard is a team-facing web application that ingest
 - **Engineering Teams**: Monitor security posture in real time
 - **Auditors**: Evidence of supply chain controls and compliance
 
+![Sign-in Page](Screenshots/Signin.png)
+
 ![Dashboard Screenshot](Screenshots/Dashboard.png)
 
-![Sign-in Page](Screenshots/Signin.png)
+
 
 ---
 
