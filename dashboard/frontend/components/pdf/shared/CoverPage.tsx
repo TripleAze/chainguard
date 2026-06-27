@@ -13,14 +13,10 @@ interface CoverPageProps {
 }
 
 export function CoverPage({ subtitle, release, totalReleases, passRate, lastDeployAt }: CoverPageProps) {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const day = String(date.getUTCDate()).padStart(2, '0')
-    const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
-    const year = date.getUTCFullYear()
-    const hours = String(date.getUTCHours()).padStart(2, '0')
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-    return `${day} ${month} ${year} ${hours}:${minutes} UTC`
+  const formatDate = (d: string | Date) => {
+    const date = new Date(d)
+    return date.toUTCString().replace(/:\d{2} GMT/, ' UTC')
+      .replace(/\w+, /, '')
   }
 
   const passedChecks = [release?.sig_passed, release?.sbom_passed, release?.vuln_passed, release?.prov_passed].filter(Boolean).length
@@ -49,7 +45,7 @@ export function CoverPage({ subtitle, release, totalReleases, passRate, lastDepl
           </View>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataLabel}>Branch:</Text>
-            <Text style={styles.metadataValue}>{release.git_ref}</Text>
+            <Text style={styles.metadataValue}>{release.git_ref.replace('refs/heads/', '')}</Text>
           </View>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataLabel}>Commit:</Text>
@@ -62,18 +58,29 @@ export function CoverPage({ subtitle, release, totalReleases, passRate, lastDepl
         {release ? (
           <>
             <Text style={styles.overallLabel}>Overall Result:</Text>
-            <Text style={release.passed ? styles.overallPass : styles.overallFail}>
-              {release.passed ? '✅ PASS' : '❌ FAIL'}
-            </Text>
+            <View style={[styles.overallBadge, release.passed ? styles.overallBadgePass : styles.overallBadgeFail]}>
+              <Text style={styles.overallBadgeText}>{release.passed ? 'PASS' : 'FAIL'}</Text>
+            </View>
             <Text style={styles.checksPassed}>Checks passed: {passedChecks} / {totalChecks}</Text>
           </>
         ) : (
-          <View style={styles.summaryCoverStats}>
-            <Text style={styles.summaryCoverStat}>Total Releases: {totalReleases}</Text>
-            <Text style={styles.summaryCoverStat}>Pass Rate: {passRate?.toFixed(1)}%</Text>
-            <Text style={styles.summaryCoverStat}>
-              Last Deploy: {lastDeployAt ? formatDate(lastDeployAt) : 'N/A'}
-            </Text>
+          <View style={styles.summaryStatsRow}>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatLabel}>Total Releases:</Text>
+              <Text style={styles.summaryStatValue}>{totalReleases}</Text>
+            </View>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatLabel}>Pass Rate:</Text>
+              <Text style={[styles.summaryStatValue, (passRate ?? 0) >= 90 ? styles.summaryStatValueHigh : styles.summaryStatValueLow]}>
+                {passRate?.toFixed(1)}%
+              </Text>
+            </View>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatLabel}>Last Deploy:</Text>
+              <Text style={styles.summaryStatValue}>
+                {lastDeployAt ? formatDate(lastDeployAt) : 'N/A'}
+              </Text>
+            </View>
           </View>
         )}
       </View>

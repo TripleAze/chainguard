@@ -190,4 +190,66 @@ export const styles = StyleSheet.create({
     color: colors.white,
     marginBottom: 6,
   },
+  overallBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  overallBadgePass: {
+    backgroundColor: colors.accentGreen,
+  },
+  overallBadgeFail: {
+    backgroundColor: colors.accentRed,
+  },
+  overallBadgeText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  summaryStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  summaryStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryStatLabel: {
+    fontSize: 10,
+    color: colors.textGray,
+  },
+  summaryStatValue: {
+    fontSize: 12,
+    color: colors.white,
+  },
+  summaryStatValueHigh: {
+    color: colors.accentGreen,
+  },
+  summaryStatValueLow: {
+    color: colors.accentRed,
+  },
+  resultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 3,
+  },
+  resultBadgePass: {
+    backgroundColor: '#DCFCE7',
+  },
+  resultBadgeFail: {
+    backgroundColor: '#FEE2E2',
+  },
+  resultBadgeTextPass: {
+    color: '#166534',
+    fontWeight: 'bold',
+  },
+  resultBadgeTextFail: {
+    color: '#991B1B',
+    fontWeight: 'bold',
+  },
+  tableCellImage: {
+    flex: 0.25,
+  },
 })

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams, useRouter, notFound } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
+import Header from '@/components/Header'
 import CheckBadge from '@/components/CheckBadge'
 import { ChainGuardReport } from '@/components/pdf/ChainGuardReport'
 import Link from 'next/link'
@@ -14,15 +15,6 @@ const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
   { ssr: false }
 )
-
-function ArrowLeftIcon() {
-	return (
-		<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-			<line x1="19" y1="12" x2="5" y2="12" />
-			<polyline points="12 19 5 12 12 5" />
-		</svg>
-	)
-}
 
 function ExternalLinkIcon() {
 	return (
@@ -94,22 +86,41 @@ export default function ReleasePage() {
 
 	if (!user) {
 		return (
-			<main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
-				<div className="text-center space-y-6">
-					<div className="flex justify-center">
-						<ShieldIcon />
+			<main className="min-h-screen w-full flex items-center justify-center p-4" style={{
+				background: 'radial-gradient(ellipse at center, #0F2744 0%, #0F172A 70%)'
+			}}>
+				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
+					<div className="flex flex-col items-center">
+						<img
+							src="/chainguard-logo-transparent.svg"
+							alt="ChainGuard"
+							style={{
+								height: 64,
+								width: 'auto',
+								mixBlendMode: 'screen',
+								background: 'transparent'
+							}}
+						/>
+
+						<div className="mt-6 text-center">
+							<h1 className="text-white text-xl font-semibold">ChainGuard</h1>
+							<p className="text-[#64748B] text-sm mt-1">Supply Chain Security Dashboard</p>
+						</div>
+
+						<div className="mt-8 w-full">
+							<button
+								onClick={login}
+								className="w-full h-11 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+							>
+								<GitHubIcon />
+								Sign in with GitHub
+							</button>
+						</div>
+
+						<p className="text-[#475569] text-xs mt-6 text-center">
+							Secure access · Team members only
+						</p>
 					</div>
-					<div>
-						<h1 className="text-2xl font-bold text-white mb-2">ChainGuard</h1>
-						<p className="text-gray-400">Supply Chain Compliance Dashboard</p>
-					</div>
-					<button
-						onClick={login}
-						className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-					>
-						<GitHubIcon />
-						Sign in with GitHub
-					</button>
 				</div>
 			</main>
 		)
@@ -131,133 +142,110 @@ export default function ReleasePage() {
 	const shortCommit = release.git_commit?.slice(0, 7) ?? '—'
 
 	return (
-		<main className="min-h-screen bg-gray-950 text-gray-100">
-			{/* Header */}
-			<header className="border-b border-gray-800 bg-gray-900">
-				<div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
-					<Link href="/" className="text-gray-400 hover:text-white text-sm flex items-center gap-2">
-						<ArrowLeftIcon />
-						Dashboard
-					</Link>
-					<span className="text-gray-600">/</span>
-					<span className="text-sm text-gray-300 font-mono">{shortDigest}</span>
-					<div className="ml-auto flex items-center gap-4">
-						<div className="flex items-center gap-2">
-							{user.avatar && (
-								<img src={user.avatar} alt={user.login} className="w-8 h-8 rounded-full" />
-							)}
-							<span className="text-sm text-gray-300">{user.name || user.login}</span>
-						</div>
-						<button
-							onClick={logout}
-							className="text-sm text-gray-400 hover:text-white transition-colors"
-						>
-							Sign out
-						</button>
-					</div>
-				</div>
-			</header>
-
-			<div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-				{error && (
-					<div className="bg-red-900/20 border border-red-800 rounded-lg p-4">
-						<p className="text-red-400">{error}</p>
-						<button onClick={loadRelease} className="mt-2 text-cyan-400 hover:text-cyan-300 text-sm">
-							Try again
-						</button>
-					</div>
-				)}
-
-				{/* Release header */}
-				<div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-					<div className="flex items-start justify-between">
-						<div>
-							<h1 className="text-lg font-semibold text-white">{release.image_ref}</h1>
-							<p className="text-sm text-gray-400 font-mono mt-1">{release.digest}</p>
-						</div>
-						<span className={`px-3 py-1 rounded-full text-sm font-medium ${
-							release.passed
-								? 'bg-green-900/50 text-green-400 border border-green-800'
-								: 'bg-red-900/50 text-red-400 border border-red-800'
-						}`}>
-							{release.overall}
-						</span>
-					</div>
-
-					<div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-						<div>
-							<p className="text-gray-500">Commit</p>
-							<p className="text-gray-200 font-mono">{shortCommit}</p>
-						</div>
-						<div>
-							<p className="text-gray-500">Branch</p>
-							<p className="text-gray-200 font-mono">{release.git_ref?.replace('refs/heads/', '') ?? '—'}</p>
-						</div>
-						<div>
-							<p className="text-gray-500">Built</p>
-							<p className="text-gray-200">{new Date(release.built_at).toLocaleString()}</p>
-						</div>
-						<div>
-							<p className="text-gray-500">SLSA Level</p>
-							<p className="text-gray-200">Level {release.slsa_level}</p>
-						</div>
-					</div>
-				</div>
-
-				{/* Check results */}
-				<div className="space-y-3">
-					<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-						Security Checks
-					</h2>
-
-					<CheckBadge
-						label="Signature"
-						passed={release.sig_passed}
-						detail={release.sig_detail}
-					/>
-
-					<CheckBadge
-						label="SBOM"
-						passed={release.sbom_passed}
-						detail={`${release.sbom_packages} packages · ${release.sbom_version}`}
-					/>
-
-					<CheckBadge
-						label="Vulnerability Scan"
-						passed={release.vuln_passed}
-						detail={`${release.vuln_critical} critical · ${release.vuln_high} high · ${release.vuln_medium} medium · ${release.vuln_low} low · ${release.vuln_scanner}`}
-					/>
-
-					<CheckBadge
-						label="Provenance"
-						passed={release.prov_passed}
-						detail={`Commit ${release.prov_commit} · ${release.prov_ref?.replace('refs/heads/', '')} · ${release.prov_builder?.split('/').pop()}`}
-					/>
-				</div>
-
-				{/* Actions */}
-				<div className="flex gap-3">
-					<PDFDownloadLink
-						document={<ChainGuardReport release={release} />}
-						fileName={`chainguard-report-${release.digest.slice(7, 19)}.pdf`}
-					>
-						{({ loading }) => (
-							<button className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2">
-								{loading ? 'Generating...' : '⬇ Export PDF Report'}
+		<>
+			<Header showBack />
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-14">
+				<div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+					{error && (
+						<div className="bg-red-900/20 border border-red-800 rounded-lg p-4">
+							<p className="text-red-400">{error}</p>
+							<button onClick={loadRelease} className="mt-2 text-cyan-400 hover:text-cyan-300 text-sm">
+								Try again
 							</button>
-						)}
-					</PDFDownloadLink>
-					<a
-						href={release.workflow_run}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors flex items-center gap-2"
-					>
-						View in GitHub Actions
-						<ExternalLinkIcon />
-					</a>
+						</div>
+					)}
+
+					{/* Release header */}
+					<div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+						<div className="flex items-start justify-between">
+							<div>
+								<h1 className="text-lg font-semibold text-white">{release.image_ref}</h1>
+								<p className="text-sm text-gray-400 font-mono mt-1">{release.digest}</p>
+							</div>
+							<span className={`px-3 py-1 rounded-full text-sm font-medium ${
+								release.passed
+									? 'bg-green-900/50 text-green-400 border border-green-800'
+									: 'bg-red-900/50 text-red-400 border border-red-800'
+							}`}>
+								{release.overall}
+							</span>
+						</div>
+
+						<div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+							<div>
+								<p className="text-gray-500">Commit</p>
+								<p className="text-gray-200 font-mono">{shortCommit}</p>
+							</div>
+							<div>
+								<p className="text-gray-500">Branch</p>
+								<p className="text-gray-200 font-mono">{release.git_ref?.replace('refs/heads/', '') ?? '—'}</p>
+							</div>
+							<div>
+								<p className="text-gray-500">Built</p>
+								<p className="text-gray-200">{new Date(release.built_at).toLocaleString()}</p>
+							</div>
+							<div>
+								<p className="text-gray-500">SLSA Level</p>
+								<p className="text-gray-200">Level {release.slsa_level}</p>
+							</div>
+						</div>
+					</div>
+
+					{/* Check results */}
+					<div className="space-y-3">
+						<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+							Security Checks
+						</h2>
+
+						<CheckBadge
+							label="Signature"
+							passed={release.sig_passed}
+							detail={release.sig_detail}
+						/>
+
+						<CheckBadge
+							label="SBOM"
+							passed={release.sbom_passed}
+							detail={`${release.sbom_packages} packages · ${release.sbom_version}`}
+						/>
+
+						<CheckBadge
+							label="Vulnerability Scan"
+							passed={release.vuln_passed}
+							detail={`${release.vuln_critical} critical · ${release.vuln_high} high · ${release.vuln_medium} medium · ${release.vuln_low} low · ${release.vuln_scanner}`}
+						/>
+
+						<CheckBadge
+							label="Provenance"
+							passed={release.prov_passed}
+							detail={`Commit ${release.prov_commit} · ${release.prov_ref?.replace('refs/heads/', '')} · ${release.prov_builder?.split('/').pop()}`}
+						/>
+					</div>
+
+					{/* Actions */}
+					<div className="flex gap-3">
+						<PDFDownloadLink
+							document={<ChainGuardReport release={release} />}
+							fileName={`chainguard-report-${release.digest.slice(7, 19)}.pdf`}
+						>
+							{({ loading }) => (
+								<button className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2">
+									{loading ? 'Generating...' : '⬇ Export PDF Report'}
+								</button>
+							)}
+						</PDFDownloadLink>
+						<a
+							href={release.workflow_run}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors flex items-center gap-2"
+						>
+							View in GitHub Actions
+							<ExternalLinkIcon />
+						</a>
+					</div>
 				</div>
-			</div>
-		</main>
+			</main>
+		</>
 	)
 }

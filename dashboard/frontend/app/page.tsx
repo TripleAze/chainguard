@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useAuth } from '@/components/AuthProvider'
+import Header from '@/components/Header'
 import SummaryCards from '@/components/SummaryCards'
 import CVETrendChart from '@/components/CVETrendChart'
 import ReleaseTimeline from '@/components/ReleaseTimeline'
@@ -78,22 +79,41 @@ export default function DashboardPage() {
 
 	if (!user) {
 		return (
-			<main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
-				<div className="text-center space-y-6">
-					<div className="flex justify-center">
-						<ShieldIcon />
+			<main className="min-h-screen w-full flex items-center justify-center p-4" style={{
+				background: 'radial-gradient(ellipse at center, #0F2744 0%, #0F172A 70%)'
+			}}>
+				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
+					<div className="flex flex-col items-center">
+						<img
+							src="/chainguard-logo-transparent.svg"
+							alt="ChainGuard"
+							style={{
+								height: 64,
+								width: 'auto',
+								mixBlendMode: 'screen',
+								background: 'transparent'
+							}}
+						/>
+
+						<div className="mt-6 text-center">
+							<h1 className="text-white text-xl font-semibold">ChainGuard</h1>
+							<p className="text-[#64748B] text-sm mt-1">Supply Chain Security Dashboard</p>
+						</div>
+
+						<div className="mt-8 w-full">
+							<button
+								onClick={login}
+								className="w-full h-11 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors"
+							>
+								<GitHubIcon />
+								Sign in with GitHub
+							</button>
+						</div>
+
+						<p className="text-[#475569] text-xs mt-6 text-center">
+							Secure access · Team members only
+						</p>
 					</div>
-					<div>
-						<h1 className="text-2xl font-bold text-white mb-2">ChainGuard</h1>
-						<p className="text-gray-400">Supply Chain Compliance Dashboard</p>
-					</div>
-					<button
-						onClick={login}
-						className="inline-flex items-center gap-2 bg-white text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-					>
-						<GitHubIcon />
-						Sign in with GitHub
-					</button>
 				</div>
 			</main>
 		)
@@ -115,92 +135,64 @@ export default function DashboardPage() {
 		)
 	}
 
+	const lastPassed = releasesData?.releases?.[0]?.passed
+
 	return (
-		<main className="min-h-screen bg-gray-950 text-gray-100">
-			{/* Header */}
-			<header className="border-b border-gray-800 bg-gray-900">
-				<div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">
-					<ShieldIcon />
-					<div className="flex-1">
-						<h1 className="text-lg font-semibold text-white">ChainGuard</h1>
-						<p className="text-xs text-gray-400">Supply Chain Compliance Dashboard</p>
+		<>
+			<Header lastDeployAt={summary?.last_deploy_at} lastDeployPassed={lastPassed} />
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-14">
+				{dataLoading ? (
+					<div className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-center">
+						<div className="text-gray-400">Loading dashboard...</div>
 					</div>
-					<div className="flex items-center gap-4">
-						<div className="flex items-center gap-2">
-							{user.avatar && (
-								<img src={user.avatar} alt={user.login} className="w-8 h-8 rounded-full" />
-							)}
-							<span className="text-sm text-gray-300">{user.name || user.login}</span>
-						</div>
-						<button
-							onClick={logout}
-							className="text-sm text-gray-400 hover:text-white transition-colors"
-						>
-							Sign out
-						</button>
-					</div>
-					{summary?.last_deploy_at && (
-						<p className="text-sm text-gray-400 hidden md:block">
-							Last deploy:{' '}
-							<span className="text-gray-200">
-								{new Date(summary.last_deploy_at).toLocaleString()}
-							</span>
-						</p>
-					)}
-				</div>
-			</header>
+				) : (
+					<div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+						{/* Summary cards */}
+						{summary && <SummaryCards summary={summary} />}
 
-			{dataLoading ? (
-				<div className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-center">
-					<div className="text-gray-400">Loading dashboard...</div>
-				</div>
-			) : (
-				<div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-					{/* Summary cards */}
-					{summary && <SummaryCards summary={summary} />}
-
-					{/* CVE Trend chart */}
-					{cveTrend && (
-						<section>
-							<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
-								CVE Trend · Last 30 Days
-							</h2>
-							<div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-								<CVETrendChart data={cveTrend.points} />
-							</div>
-						</section>
-					)}
-
-					{/* Export Button */}
-					{summary && releasesData && (
-						<div className="flex">
-							<PDFDownloadLink
-								document={<SummaryReport stats={summary} releases={releasesData.releases} />}
-								fileName="chainguard-portfolio-summary.pdf"
-							>
-								{({ loading }) => (
-									<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-										{loading ? 'Generating...' : '⬇ Export PDF'}
-									</button>
-								)}
-							</PDFDownloadLink>
-						</div>
-					)}
-
-					{/* Release timeline */}
-					{releasesData && (
-						<section>
-							<div className="flex items-center justify-between mb-4">
-								<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
-									Recent Releases
+						{/* CVE Trend chart */}
+						{cveTrend && (
+							<section>
+								<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
+									CVE Trend · Last 30 Days
 								</h2>
-								<span className="text-xs text-gray-500">{releasesData.total} total</span>
+								<div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+									<CVETrendChart data={cveTrend.points} />
+								</div>
+							</section>
+						)}
+
+						{/* Export Button */}
+						{summary && releasesData && (
+							<div className="flex">
+								<PDFDownloadLink
+									document={<SummaryReport stats={summary} releases={releasesData.releases} />}
+									fileName="chainguard-portfolio-summary.pdf"
+								>
+									{({ loading }) => (
+										<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+											{loading ? 'Generating...' : '⬇ Export PDF'}
+										</button>
+									)}
+								</PDFDownloadLink>
 							</div>
-							<ReleaseTimeline releases={releasesData.releases} />
-						</section>
-					)}
-				</div>
-			)}
-		</main>
+						)}
+
+						{/* Release timeline */}
+						{releasesData && (
+							<section>
+								<div className="flex items-center justify-between mb-4">
+									<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+										Recent Releases
+									</h2>
+									<span className="text-xs text-gray-500">{releasesData.total} total</span>
+								</div>
+								<ReleaseTimeline releases={releasesData.releases} />
+							</section>
+						)}
+					</div>
+				)}
+			</main>
+		</>
 	)
 }

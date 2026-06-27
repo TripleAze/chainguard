@@ -12,23 +12,13 @@ interface SummaryReportProps {
 }
 
 export function SummaryReport({ stats, releases }: SummaryReportProps) {
-  const generatedDate = new Date().toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    })
+  const formatDate = (d: string | Date) => {
+    const date = new Date(d)
+    return date.toUTCString().replace(/:\d{2} GMT/, ' UTC')
+      .replace(/\w+, /, '')
   }
+
+  const generatedDate = formatDate(new Date())
 
   const calculateChecksPassed = (release: Release) => {
     return [
@@ -37,6 +27,11 @@ export function SummaryReport({ stats, releases }: SummaryReportProps) {
       release.vuln_passed,
       release.prov_passed,
     ].filter(Boolean).length
+  }
+
+  const truncateImage = (imageRef: string) => {
+    const parts = imageRef.split('/')
+    return parts[parts.length - 1]
   }
 
   const recentReleases = releases.slice(0, 20)
@@ -56,7 +51,7 @@ export function SummaryReport({ stats, releases }: SummaryReportProps) {
         <View style={styles.executiveSummaryTable}>
           <View style={styles.tableHeaderRow}>
             <Text style={styles.tableHeaderCell}>COMMIT</Text>
-            <Text style={styles.tableHeaderCell}>IMAGE</Text>
+            <Text style={[styles.tableHeaderCell, styles.tableCellImage]}>IMAGE</Text>
             <Text style={styles.tableHeaderCell}>DATE</Text>
             <Text style={styles.tableHeaderCell}>RESULT</Text>
             <Text style={styles.tableHeaderCell}>CHECKS</Text>
@@ -70,19 +65,18 @@ export function SummaryReport({ stats, releases }: SummaryReportProps) {
                 style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}].filter(Boolean)}
               >
                 <Text style={styles.tableCell}>{release.git_commit.slice(0, 7)}</Text>
-                <Text style={styles.tableCell}>{release.image_ref}</Text>
+                <Text style={[styles.tableCell, styles.tableCellImage]}>{truncateImage(release.image_ref)}</Text>
                 <Text style={styles.tableCell}>{formatDate(release.built_at)}</Text>
-                <Text
-                  style={[
-                    styles.tableCell,
-                    {
-                      color: release.passed ? colors.accentGreen : colors.accentRed,
-                      fontWeight: 'bold',
-                    },
-                  ]}
-                >
-                  {release.passed ? 'PASS' : 'FAIL'}
-                </Text>
+                <View style={styles.tableCell}>
+                  <View style={[
+                    styles.resultBadge,
+                    release.passed ? styles.resultBadgePass : styles.resultBadgeFail
+                  ]}>
+                    <Text style={release.passed ? styles.resultBadgeTextPass : styles.resultBadgeTextFail}>
+                      {release.passed ? 'PASS' : 'FAIL'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.tableCell}>{checksPassed}/4</Text>
               </View>
             )

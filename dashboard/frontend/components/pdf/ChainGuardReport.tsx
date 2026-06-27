@@ -11,13 +11,13 @@ interface ChainGuardReportProps {
 }
 
 export function ChainGuardReport({ release }: ChainGuardReportProps) {
-  const generatedDate = new Date().toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const formatDate = (d: string | Date) => {
+    const date = new Date(d)
+    return date.toUTCString().replace(/:\d{2} GMT/, ' UTC')
+      .replace(/\w+, /, '')
+  }
+
+  const generatedDate = formatDate(new Date())
 
   const passedChecks = [
     release.sig_passed,
@@ -29,25 +29,31 @@ export function ChainGuardReport({ release }: ChainGuardReportProps) {
   const executiveSummaryRows = [
     {
       check: 'Signature',
-      result: release.sig_passed ? '✅ PASS' : '❌ FAIL',
+      passed: release.sig_passed,
       detail: release.sig_detail,
     },
     {
       check: 'SBOM',
-      result: release.sbom_passed ? '✅ PASS' : '❌ FAIL',
+      passed: release.sbom_passed,
       detail: `${release.sbom_packages} packages · ${release.sbom_version}`,
     },
     {
       check: 'Vuln Scan',
-      result: release.vuln_passed ? '✅ PASS' : '❌ FAIL',
+      passed: release.vuln_passed,
       detail: `${release.vuln_critical} critical · ${release.vuln_high} high · ${release.vuln_medium} medium`,
     },
     {
       check: 'Provenance',
-      result: release.prov_passed ? '✅ PASS' : '❌ FAIL',
+      passed: release.prov_passed,
       detail: `SLSA Level ${release.slsa_level} · ${release.prov_ref}`,
     },
   ]
+
+  const truncateBuilder = (builder: string) => {
+    const parts = builder.split('/')
+    const lastTwo = parts.slice(-2).join('/')
+    return lastTwo
+  }
 
   return (
     <Document>
@@ -69,7 +75,16 @@ export function ChainGuardReport({ release }: ChainGuardReportProps) {
               style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}].filter(Boolean)}
             >
               <Text style={styles.tableCell}>{row.check}</Text>
-              <Text style={styles.tableCell}>{row.result}</Text>
+              <View style={styles.tableCell}>
+                <View style={[
+                  styles.resultBadge,
+                  row.passed ? styles.resultBadgePass : styles.resultBadgeFail
+                ]}>
+                  <Text style={row.passed ? styles.resultBadgeTextPass : styles.resultBadgeTextFail}>
+                    {row.passed ? 'PASS' : 'FAIL'}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.tableCell}>{row.detail}</Text>
             </View>
           ))}
@@ -175,11 +190,11 @@ export function ChainGuardReport({ release }: ChainGuardReportProps) {
           </View>
           <View style={styles.keyValueRow}>
             <Text style={styles.keyColumn}>Branch</Text>
-            <Text style={styles.valueColumn}>{release.git_ref}</Text>
+            <Text style={styles.valueColumn}>{release.git_ref.replace('refs/heads/', '')}</Text>
           </View>
           <View style={styles.keyValueRow}>
             <Text style={styles.keyColumn}>Builder</Text>
-            <Text style={styles.valueColumn}>{release.prov_builder}</Text>
+            <Text style={styles.valueColumn}>{truncateBuilder(release.prov_builder)}</Text>
           </View>
           <View style={styles.keyValueRow}>
             <Text style={styles.keyColumn}>SLSA Level</Text>
