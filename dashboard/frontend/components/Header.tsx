@@ -28,39 +28,47 @@ export default function Header({ lastDeployAt, lastDeployPassed, showBack = fals
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A] border-b border-[#1E293B] h-14">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F172A] border-b border-[#1E293B] h-[48px]">
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Left section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-0">
           {showBack && (
-            <Link href="/" className="text-slate-400 hover:text-white flex items-center gap-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              <span className="text-sm">Dashboard</span>
-            </Link>
+            <>
+              <Link href="/" className="text-[#64748B] hover:text-[#94A3B8] flex items-center gap-2 text-[13px]">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                <span>Dashboard</span>
+              </Link>
+              <div className="border-r border-[#1E293B] pr-3 mr-3"></div>
+            </>
           )}
           <Image
-            src="/chainguard-logo-transparent.svg"
+            src="/chainguard-logo.png"
             alt="ChainGuard"
-            width={140}
-            height={32}
+            width={192}
+            height={44}
             priority
+            style={{ height: 44, width: 'auto', objectFit: 'contain' }}
           />
         </div>
 
         {/* Center section */}
         {lastDeployAt && (
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-xs">Last deploy:</span>
-            <span className="text-white text-xs font-medium">{formatDate(lastDeployAt)}</span>
+            <span className="text-[#94A3B8] text-[13px]">Last deploy:</span>
+            <span className="text-[#94A3B8] text-[13px]">{formatDate(lastDeployAt)}</span>
             {typeof lastDeployPassed === 'boolean' && (
-              <div className={`px-2 py-0.5 rounded text-xs font-medium border ${
-                lastDeployPassed
-                  ? 'bg-[#22C55E20] text-[#22C55E] border-[#22C55E40]'
-                  : 'bg-[#EF444420] text-[#EF4444] border-[#EF444440]'
-              }`}>
+              <div style={{
+                background: lastDeployPassed ? '#22C55E15' : '#EF444415',
+                border: `1px solid ${lastDeployPassed ? '#22C55E40' : '#EF444440'}`,
+                color: lastDeployPassed ? '#22C55E' : '#EF4444',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 600
+              }}>
                 {lastDeployPassed ? 'PASS' : 'FAIL'}
               </div>
             )}

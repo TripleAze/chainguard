@@ -92,12 +92,11 @@ export default function ReleasePage() {
 				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
 					<div className="flex flex-col items-center">
 						<img
-							src="/chainguard-logo-transparent.svg"
+							src="/chainguard-logo.png"
 							alt="ChainGuard"
 							style={{
 								height: 64,
 								width: 'auto',
-								mixBlendMode: 'screen',
 								background: 'transparent'
 							}}
 						/>
@@ -144,7 +143,7 @@ export default function ReleasePage() {
 	return (
 		<>
 			<Header showBack />
-			<main className="min-h-screen bg-gray-950 text-gray-100 pt-14">
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-12">
 				<div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
 					{error && (
 						<div className="bg-red-900/20 border border-red-800 rounded-lg p-4">

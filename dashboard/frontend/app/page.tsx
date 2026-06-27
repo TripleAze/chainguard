@@ -85,12 +85,11 @@ export default function DashboardPage() {
 				<div className="w-full max-w-[380px] bg-[#0F172A] border border-[#1E293B] rounded-xl p-10 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.4)]">
 					<div className="flex flex-col items-center">
 						<img
-							src="/chainguard-logo-transparent.svg"
+							src="/chainguard-logo.png"
 							alt="ChainGuard"
 							style={{
 								height: 64,
 								width: 'auto',
-								mixBlendMode: 'screen',
 								background: 'transparent'
 							}}
 						/>
@@ -140,13 +139,13 @@ export default function DashboardPage() {
 	return (
 		<>
 			<Header lastDeployAt={summary?.last_deploy_at} lastDeployPassed={lastPassed} />
-			<main className="min-h-screen bg-gray-950 text-gray-100 pt-14">
+			<main className="min-h-screen bg-gray-950 text-gray-100 pt-17">
 				{dataLoading ? (
 					<div className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-center">
 						<div className="text-gray-400">Loading dashboard...</div>
 					</div>
 				) : (
-					<div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+					<div className="max-w-7xl mx-auto px-6 pt-8 pb-8 space-y-8">
 						{/* Summary cards */}
 						{summary && <SummaryCards summary={summary} />}
 
@@ -162,22 +161,6 @@ export default function DashboardPage() {
 							</section>
 						)}
 
-						{/* Export Button */}
-						{summary && releasesData && (
-							<div className="flex">
-								<PDFDownloadLink
-									document={<SummaryReport stats={summary} releases={releasesData.releases} />}
-									fileName="chainguard-portfolio-summary.pdf"
-								>
-									{({ loading }) => (
-										<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-											{loading ? 'Generating...' : '⬇ Export PDF'}
-										</button>
-									)}
-								</PDFDownloadLink>
-							</div>
-						)}
-
 						{/* Release timeline */}
 						{releasesData && (
 							<section>
@@ -185,7 +168,21 @@ export default function DashboardPage() {
 									<h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider">
 										Recent Releases
 									</h2>
-									<span className="text-xs text-gray-500">{releasesData.total} total</span>
+									<div className="flex items-center gap-4">
+										{summary && releasesData && (
+											<PDFDownloadLink
+												document={<SummaryReport stats={summary} releases={releasesData.releases} />}
+												fileName="chainguard-portfolio-summary.pdf"
+											>
+												{({ loading }) => (
+													<button className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm">
+														{loading ? 'Generating...' : '⬇ Export PDF'}
+													</button>
+												)}
+											</PDFDownloadLink>
+										)}
+										<span className="text-xs text-gray-500">{releasesData.total} total</span>
+									</div>
 								</div>
 								<ReleaseTimeline releases={releasesData.releases} />
 							</section>
