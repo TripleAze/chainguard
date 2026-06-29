@@ -7,11 +7,6 @@ metadata:
 data:
   PORT: "8080"
   GITHUB_CALLBACK_URL: "https://atiqabubakar.sbs/api/auth/callback"
-spec:
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -120,7 +115,3 @@ spec:
     - port: 8080
       targetPort: http
   type: ClusterIP
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
