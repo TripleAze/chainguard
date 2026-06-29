@@ -92,12 +92,13 @@ jobs:
           BACKEND_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -n 1)
           FRONTEND_TAG=$(echo "${{ steps.meta-frontend.outputs.tags }}" | head -n 1)
 
-          # Update backend deployment
-          yq eval ".spec.template.spec.containers[0].image = \"${BACKEND_TAG}\"" -i deploy/dashboard-backend.yml
+          # Update backend deployment (only the Deployment resource)
+          yq eval '(select(.kind == "Deployment") | .spec.template.spec.containers[0].image) = "'"${BACKEND_TAG}"'"' -i deploy/dashboard-backend.yml
 
-          # Update frontend deployment
-          yq eval ".spec.template.spec.containers[0].image = \"${FRONTEND_TAG}\"" -i deploy/dashboard-frontend.yml
-
+          # Update frontend deployment (only the Deployment resource)
+          yq eval '(select(.kind == "Deployment") | .spec.template.spec.containers[0].image) = "'"${FRONTEND_TAG}"'"' -i deploy/dashboard-frontend.yml
+            echo "Manifest updated"
+            
       - name: Commit and push manifest changes
         if: github.event_name != 'pull_request'
         run: |
