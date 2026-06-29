@@ -8,6 +8,19 @@ data:
   POSTGRES_DB: chainguard
   POSTGRES_USER: chainguard
 ---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true" 
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  fsType: ext4
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -46,6 +59,8 @@ spec:
             secretKeyRef:
               name: dashboard-db-secret
               key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
         volumeMounts:
         - name: data
           mountPath: /var/lib/postgresql/data
@@ -82,6 +97,7 @@ spec:
     spec:
       accessModes:
         - ReadWriteOnce
+      storageClassName: gp3
       resources:
         requests:
           storage: 1Gi

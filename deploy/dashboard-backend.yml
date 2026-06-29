@@ -6,12 +6,7 @@ metadata:
   namespace: chainguard-app
 data:
   PORT: "8080"
-  GITHUB_CALLBACK_URL: "http://localhost:8080/api/auth/callback"
-spec:
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
+  GITHUB_CALLBACK_URL: "https://dashboard.atiqabubakar.sbs/api/auth/callback"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -120,7 +115,3 @@ spec:
     - port: 8080
       targetPort: http
   type: ClusterIP
-  template:
-    spec:
-      containers:
-        - image: ghcr.io/tripleaze/chainguard-dashboard-backend:main
