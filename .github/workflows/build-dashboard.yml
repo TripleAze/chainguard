@@ -79,7 +79,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=https://dashboard.atiqabubakar.sbs
+            NEXT_PUBLIC_API_URL=https://atiqabubakar.sbs
 
       - name: Install yq
         if: github.event_name != 'pull_request'

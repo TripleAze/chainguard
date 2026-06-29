@@ -35,6 +35,9 @@ func main() {
 		frontendURL = "http://localhost:3000"
 	}
 
+	sessionDomain := os.Getenv("SESSION_DOMAIN")
+	secureCookies := os.Getenv("SECURE_COOKIES") == "true"
+
 	// Optional: allowed users (comma-separated)
 	allowedUsersStr := os.Getenv("GITHUB_ALLOWED_USERS")
 	var allowedUsers []string
@@ -66,7 +69,7 @@ func main() {
 	}
 
 	// Start HTTP server
-	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey, allowedUsers, frontendURL)
+	srv := api.NewServer(pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey, allowedUsers, frontendURL, sessionDomain, secureCookies)
 	log.Printf("ChainGuard dashboard backend v%s — listening on :%s", version, port)
 	if err := srv.Listen(":" + port); err != nil {
 		log.Fatalf("server error: %v", err)

@@ -7,6 +7,9 @@ metadata:
 data:
   PORT: "8080"
   GITHUB_CALLBACK_URL: "https://atiqabubakar.sbs/api/auth/callback"
+  FRONTEND_URL: "https://atiqabubakar.sbs"
+  SESSION_DOMAIN: ".atiqabubakar.sbs"
+  SECURE_COOKIES: "true"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -47,6 +50,21 @@ spec:
                 configMapKeyRef:
                   name: dashboard-backend-config
                   key: GITHUB_CALLBACK_URL
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: dashboard-backend-config
+                  key: FRONTEND_URL
+            - name: SESSION_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: dashboard-backend-config
+                  key: SESSION_DOMAIN
+            - name: SECURE_COOKIES
+              valueFrom:
+                configMapKeyRef:
+                  name: dashboard-backend-config
+                  key: SECURE_COOKIES
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

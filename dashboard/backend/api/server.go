@@ -30,7 +30,7 @@ type Server struct {
 }
 
 // NewServer wires up all routes and returns a ready Server
-func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string, allowedUsers []string, frontendURL string) *Server {
+func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubClientSecret, callbackURL, sessionKey string, allowedUsers []string, frontendURL string, sessionDomain string, secureCookies bool) *Server {
 	oauthCfg := &oauth2.Config{
 		ClientID:     githubClientID,
 		ClientSecret: githubClientSecret,
@@ -44,8 +44,9 @@ func NewServer(pool *pgxpool.Pool, ingestKey, version, githubClientID, githubCli
 		Path:     "/",
 		MaxAge:   86400 * 7, // 1 week
 		HttpOnly: true,
-		Secure:   false, // Set to true in production
+		Secure:   secureCookies, // Set to true in production
 		SameSite: http.SameSiteLaxMode,
+		Domain:   sessionDomain,
 	}
 
 	allowedUsersMap := make(map[string]bool)
