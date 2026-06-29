@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
   useEffect(() => {
     fetchUser()
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/auth/user', {
+      const res = await fetch(`${API_URL}/api/auth/user`, {
         credentials: 'include',
       })
       if (res.ok) {
@@ -49,12 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const login = () => {
-    window.location.href = 'http://localhost:8080/api/auth/login'
+    window.location.href = `${API_URL}/api/auth/login`
   }
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:8080/api/auth/logout', {
+      await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       })

@@ -4,6 +4,10 @@ FROM cgr.dev/chainguard/node:latest as builder
 # Set working directory
 WORKDIR /app
 
+# Accept build arg and set it as env
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
