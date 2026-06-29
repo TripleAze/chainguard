@@ -18,6 +18,14 @@ spec:
     server: https://kubernetes.default.svc
     namespace: chainguard-app
 
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: dashboard-backend-secret
+    - group: ""
+      kind: Secret
+      name: dashboard-db-secret
+
   syncPolicy:
     automated:
       prune: true       # remove resources deleted from Git
