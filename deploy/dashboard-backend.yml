@@ -6,7 +6,7 @@ metadata:
   namespace: chainguard-app
 data:
   PORT: "8080"
-  GITHUB_CALLBACK_URL: "https://dashboard.atiqabubakar.sbs/api/auth/callback"
+  GITHUB_CALLBACK_URL: "https://atiqabubakar.sbs/api/auth/callback"
 ---
 apiVersion: apps/v1
 kind: Deployment
