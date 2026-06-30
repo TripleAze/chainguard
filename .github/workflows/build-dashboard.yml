@@ -94,10 +94,10 @@ jobs:
           FRONTEND_TAG=$(echo "${{ steps.meta-frontend.outputs.tags }}" | head -n 1)
 
           # Update backend deployment (only the Deployment resource)
-          yq eval '(select(.kind == "Deployment") | .spec.template.spec.containers[0].image) = "'"${BACKEND_TAG}"'"' -i deploy/dashboard-backend.yml
+          yq eval-all 'select(.kind == "Deployment") |= .spec.template.spec.containers[0].image = "'"${BACKEND_TAG}"'"' -i deploy/dashboard-backend.yml
 
           # Update frontend deployment (only the Deployment resource)
-          yq eval '(select(.kind == "Deployment") | .spec.template.spec.containers[0].image) = "'"${FRONTEND_TAG}"'"' -i deploy/dashboard-frontend.yml
+          yq eval-all 'select(.kind == "Deployment") |= .spec.template.spec.containers[0].image = "'"${FRONTEND_TAG}"'"' -i deploy/dashboard-frontend.yml
             echo "Manifest updated"
             
       - name: Commit and push manifest changes
