@@ -1,5 +1,7 @@
 'use client'
 
+// CVE trend visualization component
+
 import {
 	LineChart, Line, XAxis, YAxis, CartesianGrid,
 	Tooltip, Legend, ResponsiveContainer, Area, ComposedChart
